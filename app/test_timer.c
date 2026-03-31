@@ -1,0 +1,131 @@
+#include <stdint.h>
+
+#include "app_tests.h"
+#include "board.h"
+#include "hal.h"
+#include "logger.h"
+#include "task.h"
+#include "timer.h"
+
+static volatile uint32_t timer_a_hits;
+static volatile uint32_t timer_b_hits;
+static volatile uint32_t timer_c_hits;
+static volatile uint32_t timer_d_hits;
+
+static void timer_count_callback(void *arg)
+{
+    volatile uint32_t *counter = (volatile uint32_t *)arg;
+
+    (*counter)++;
+}
+
+static void led_task(void *arg)
+{
+    static int started;
+
+    (void)arg;
+    gpio_write(BOARD_LED_PIN, 1);
+    if (!started)
+    {
+        started = 1;
+        LOG_INFO("led task start\n");
+    }
+
+    for (;;)
+    {
+        gpio_write(BOARD_LED_PIN, 1);
+        task_delay(500);
+        gpio_write(BOARD_LED_PIN, 0);
+        task_delay(500);
+    }
+}
+
+static void log_task1(void *arg)
+{
+    static int started;
+
+    (void)arg;
+    if (!started)
+    {
+        started = 1;
+        LOG_INFO("log task1 start\n");
+    }
+
+    for (;;)
+    {
+        uint64_t count = timer_cycles();
+        LOG_INFO("A: count_hi=%lu count_lo=%lu soft_tick=%lu\n", (uint32_t)(count >> 32),
+                 (uint32_t)count, timer_ticks());
+        task_delay(1000);
+    }
+}
+
+static void log_task2(void *arg)
+{
+    static int started;
+
+    (void)arg;
+    if (!started)
+    {
+        started = 1;
+        LOG_INFO("log task2 start\n");
+    }
+
+    for (;;)
+    {
+        uint64_t count = timer_cycles();
+        LOG_INFO("B: count_hi=%lu count_lo=%lu soft_tick=%lu\n", (uint32_t)(count >> 32),
+                 (uint32_t)count, timer_ticks());
+        task_delay(1000);
+    }
+}
+
+static void timer_task1(void *arg)
+{
+    static timer_t timer_a;
+    static timer_t timer_b;
+
+    (void)arg;
+    LOG_INFO("timer task1 start\n");
+
+    timer_setup(&timer_a, timer_count_callback, (void *)&timer_a_hits);
+    timer_setup(&timer_b, timer_count_callback, (void *)&timer_b_hits);
+    timer_start(&timer_a, 250, 250);
+    timer_start(&timer_b, 700, 700);
+
+    for (;;)
+    {
+        LOG_INFO("T1: tick=%lu a=%lu b=%lu\n", timer_ticks(), timer_a_hits, timer_b_hits);
+        task_delay(1000);
+    }
+}
+
+static void timer_task2(void *arg)
+{
+    static timer_t timer_c;
+    static timer_t timer_d;
+
+    (void)arg;
+    LOG_INFO("timer task2 start\n");
+
+    timer_setup(&timer_c, timer_count_callback, (void *)&timer_c_hits);
+    timer_setup(&timer_d, timer_count_callback, (void *)&timer_d_hits);
+    timer_start(&timer_c, 333, 333);
+    timer_start(&timer_d, 1200, 1200);
+
+    for (;;)
+    {
+        LOG_INFO("T2: tick=%lu c=%lu d=%lu active=%d/%d\n", timer_ticks(), timer_c_hits,
+                 timer_d_hits, timer_active(&timer_c), timer_active(&timer_d));
+        task_delay(1000);
+    }
+}
+
+void app_test_timer_start(void)
+{
+    task_create("led_task", led_task, 0, RTOS_TASK_STACK_SIZE, 1);
+    task_create("log_task1", log_task1, 0, RTOS_TASK_STACK_SIZE, 1);
+    task_create("log_task2", log_task2, 0, RTOS_TASK_STACK_SIZE, 1);
+    task_create("timer_task1", timer_task1, 0, RTOS_TASK_STACK_SIZE, 1);
+    task_create("timer_task2", timer_task2, 0, RTOS_TASK_STACK_SIZE, 1);
+}
