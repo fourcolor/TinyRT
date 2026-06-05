@@ -59,14 +59,7 @@ BUILDDIR := build/$(BOARD)
 TARGET  := rtos
 
 # --- Sources ---
-ifeq ($(APP),main)
-APP_SRCS ?= $(APPDIR)/main.c \
-            $(APPDIR)/test_timer.c \
-            $(APPDIR)/test_sync.c \
-            $(APPDIR)/test_isr.c
-else
 APP_SRCS ?= $(APPDIR)/$(APP).c
-endif
 
 SRCS    := $(APP_SRCS) \
            $(wildcard $(KERNELDIR)/*.c) \
@@ -74,6 +67,7 @@ SRCS    := $(APP_SRCS) \
 OBJS    := $(patsubst %.c,$(BUILDDIR)/%.o,$(SRCS))
 DEPS    := $(OBJS:.o=.d)
 FORMAT_SRCS := $(shell find app boards include src -type f \( -name '*.c' -o -name '*.h' -o -name '*.S' \))
+APP_TESTS ?= $(filter-out main,$(patsubst $(APPDIR)/%.c,%,$(wildcard $(APPDIR)/*_test.c)))
 
 # --- Compiler flags ---
 ifeq ($(BOARD),qemu-stm32f103c8t8)
@@ -113,7 +107,7 @@ CHIP    := esp32c3
 
 # ============================================================
 
-.PHONY: all clean flash disasm size format openocd openocd-low-speed openocd-sudo gdb gdb-kernel gdb-help monitor-reset qemu FORCE
+.PHONY: all clean flash disasm size format app-tests list-apps openocd openocd-low-speed openocd-sudo gdb gdb-kernel gdb-help monitor-reset qemu FORCE
 
 all: $(BUILDDIR)/$(TARGET).bin
 
@@ -207,6 +201,15 @@ size: $(BUILDDIR)/$(TARGET).elf
 
 format:
 	$(CLANG_FORMAT) -i $(FORMAT_SRCS)
+
+app-tests:
+	@for app in $(APP_TESTS); do \
+	    echo "== APP=$$app =="; \
+	    $(MAKE) --no-print-directory APP=$$app || exit $$?; \
+	done
+
+list-apps:
+	@printf "%s\n" $(patsubst $(APPDIR)/%.c,%,$(wildcard $(APPDIR)/*.c))
 
 clean:
 	rm -rf build
