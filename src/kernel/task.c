@@ -205,6 +205,7 @@ void __attribute__((noinline)) task_yield(void)
 void task_delay(uint32_t ticks)
 {
     uint32_t wakeup;
+    critical_state_t state;
 
     if (scheduler.current_task == 0)
     {
@@ -221,13 +222,20 @@ void task_delay(uint32_t ticks)
 
     while (!timer_expired(timer_ticks(), wakeup))
     {
+        state = critical_enter();
+        if (timer_expired(timer_ticks(), wakeup))
+        {
+            critical_exit(state);
+            break;
+        }
+
         scheduler.current_task->wakeup = wakeup;
         scheduler.current_task->waiting_on_timer = 1;
         scheduler.current_task->wait_result = TASK_WAIT_NONE;
         scheduler.current_task->state = TASK_BLOCKED;
         sched_ready_remove(scheduler.current_task);
         sched_timeout_insert(scheduler.current_task);
-        arch_interrupt_enable();
+        critical_exit(state);
         task_yield();
     }
 }

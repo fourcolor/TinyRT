@@ -53,6 +53,30 @@ int trt_msg_q_is_empty(trt_msg_q_t *q)
     return q->head == q->tail;
 }
 
+size_t trt_msg_q_count(trt_msg_q_t *q)
+{
+    size_t count;
+    critical_state_t state;
+
+    if (q == 0)
+    {
+        return 0;
+    }
+
+    state = critical_enter();
+    if (q->head >= q->tail)
+    {
+        count = q->head - q->tail;
+    }
+    else
+    {
+        count = (q->qlen + 1u) - q->tail + q->head;
+    }
+    critical_exit(state);
+
+    return count;
+}
+
 trt_msg_q_t *trt_msg_q_init(size_t cap, size_t qlen)
 {
     trt_msg_q_t *q;
@@ -147,7 +171,71 @@ err_t trt_msg_q_send(trt_msg_q_t *q, void *data, size_t size, trt_time_t timeout
             return ERR_LOCKED;
         }
 
-        result = trt_wait_q_block_timeout_locked(&q->writers, timeout);
+        result = timeout.us == TRT_TIME_FOREVER_US
+                     ? trt_wait_q_block_locked(&q->writers)
+                     : trt_wait_q_block_timeout_locked(&q->writers, timeout);
+        critical_exit(state);
+
+        if (result != ERR_OK)
+        {
+            return result;
+        }
+
+        task_yield();
+        if (scheduler.current_task->wait_result == TASK_WAIT_TIMEOUT)
+        {
+            return ERR_TIMEOUT;
+        }
+        if (scheduler.current_task->wait_result != TASK_WAIT_OBJECT)
+        {
+            return ERR_STATE;
+        }
+    }
+}
+
+err_t trt_msg_q_send_front(trt_msg_q_t *q, void *data, size_t size, trt_time_t timeout)
+{
+    int result;
+    critical_state_t state;
+
+    if (q == 0 || data == 0 || size == 0 || size > q->cap)
+    {
+        return ERR_INVAL;
+    }
+
+    for (;;)
+    {
+        unsigned char *slot;
+
+        state = critical_enter();
+
+        if (!trt_msg_q_is_full(q))
+        {
+            q->tail = q->tail == 0 ? q->qlen : q->tail - 1u;
+            slot = q->buf + (q->tail * q->cap);
+            msg_q_zero(slot, q->cap);
+            msg_q_copy(slot, data, size);
+            trt_wait_q_wake_one_locked(&q->readers);
+            critical_exit(state);
+            return ERR_OK;
+        }
+
+        if (timeout.us == 0)
+        {
+            critical_exit(state);
+            return ERR_BUSY;
+        }
+
+        if (sched_is_locked())
+        {
+            sched_set_pending();
+            critical_exit(state);
+            return ERR_LOCKED;
+        }
+
+        result = timeout.us == TRT_TIME_FOREVER_US
+                     ? trt_wait_q_block_locked(&q->writers)
+                     : trt_wait_q_block_timeout_locked(&q->writers, timeout);
         critical_exit(state);
 
         if (result != ERR_OK)
@@ -206,7 +294,9 @@ err_t trt_msg_q_recv(trt_msg_q_t *q, void *buf, trt_time_t timeout)
             return ERR_LOCKED;
         }
 
-        result = trt_wait_q_block_timeout_locked(&q->readers, timeout);
+        result = timeout.us == TRT_TIME_FOREVER_US
+                     ? trt_wait_q_block_locked(&q->readers)
+                     : trt_wait_q_block_timeout_locked(&q->readers, timeout);
         critical_exit(state);
 
         if (result != ERR_OK)
@@ -264,7 +354,9 @@ err_t trt_msg_q_peek(trt_msg_q_t *q, void *buf, trt_time_t timeout)
             return ERR_LOCKED;
         }
 
-        result = trt_wait_q_block_timeout_locked(&q->readers, timeout);
+        result = timeout.us == TRT_TIME_FOREVER_US
+                     ? trt_wait_q_block_locked(&q->readers)
+                     : trt_wait_q_block_timeout_locked(&q->readers, timeout);
         critical_exit(state);
 
         if (result != ERR_OK)

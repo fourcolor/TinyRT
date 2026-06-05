@@ -91,6 +91,11 @@ err_t trt_mutex_lock_timeout(trt_mutex_t *mutex, trt_time_t timeout)
     int result;
     critical_state_t state;
 
+    if (timeout.us == TRT_TIME_FOREVER_US)
+    {
+        return trt_mutex_lock(mutex);
+    }
+
     if (mutex == 0 || scheduler.current_task == 0)
     {
         return ERR_INVAL;

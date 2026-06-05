@@ -13,6 +13,8 @@ typedef struct
 #define TRT_US(value) ((trt_time_t){.us = (uint64_t)(value)})
 #define TRT_MS(value) ((trt_time_t){.us = (uint64_t)(value)*1000ull})
 #define TRT_SEC(value) ((trt_time_t){.us = (uint64_t)(value)*1000000ull})
+#define TRT_TIME_FOREVER_US UINT64_MAX
+#define TRT_WAIT_FOREVER TRT_US(TRT_TIME_FOREVER_US)
 
 typedef struct timer_t
 {

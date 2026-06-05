@@ -133,6 +133,12 @@ err_t trt_sem_wait_timeout(trt_sem_t *sem, trt_time_t timeout)
     int result;
     critical_state_t state = critical_enter();
 
+    if (timeout.us == TRT_TIME_FOREVER_US)
+    {
+        critical_exit(state);
+        return trt_sem_wait(sem);
+    }
+
     if (!sem)
     {
         critical_exit(state);

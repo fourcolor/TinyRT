@@ -90,11 +90,21 @@ static err_t trt_wait_q_block_ticks(trt_wait_q_t *queue, uint32_t timeout_ticks)
 
 err_t trt_wait_q_block_timeout_locked(trt_wait_q_t *queue, trt_time_t timeout)
 {
+    if (timeout.us == TRT_TIME_FOREVER_US)
+    {
+        return trt_wait_q_block_locked(queue);
+    }
+
     return trt_wait_q_block_ticks_locked(queue, timer_us_to_ticks(timeout.us));
 }
 
 err_t trt_wait_q_block_timeout(trt_wait_q_t *queue, trt_time_t timeout)
 {
+    if (timeout.us == TRT_TIME_FOREVER_US)
+    {
+        return trt_wait_q_block(queue);
+    }
+
     return trt_wait_q_block_ticks(queue, timer_us_to_ticks(timeout.us));
 }
 
