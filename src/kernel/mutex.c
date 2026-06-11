@@ -9,7 +9,33 @@ void trt_mutex_init(trt_mutex_t *mutex)
 {
     mutex->owner = 0;
     mutex->lock_count = 0;
+    mutex->destroyed = 0;
     INIT_LIST_HEAD(&mutex->waiters.waiters);
+}
+
+err_t trt_mutex_destroy(trt_mutex_t *mutex)
+{
+    critical_state_t state;
+
+    if (mutex == 0)
+    {
+        return ERR_INVAL;
+    }
+
+    state = critical_enter();
+    if (mutex->destroyed)
+    {
+        critical_exit(state);
+        return ERR_STATE;
+    }
+
+    mutex->destroyed = 1;
+    mutex->owner = 0;
+    mutex->lock_count = 0;
+    trt_wait_q_wake_all_result_locked(&mutex->waiters, TASK_WAIT_DESTROYED);
+    critical_exit(state);
+
+    return ERR_OK;
 }
 
 err_t trt_mutex_trylock(trt_mutex_t *mutex)
@@ -24,6 +50,12 @@ err_t trt_mutex_trylock(trt_mutex_t *mutex)
 
     state = critical_enter();
     current = scheduler.current_task;
+
+    if (mutex->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
+    }
 
     if (mutex->owner == 0)
     {
@@ -58,6 +90,12 @@ err_t trt_mutex_lock(trt_mutex_t *mutex)
     state = critical_enter();
     current = scheduler.current_task;
 
+    if (mutex->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
+    }
+
     if (mutex->owner == 0)
     {
         mutex->owner = current;
@@ -82,6 +120,10 @@ err_t trt_mutex_lock(trt_mutex_t *mutex)
     }
 
     task_yield();
+    if (scheduler.current_task->wait_result == TASK_WAIT_DESTROYED)
+    {
+        return ERR_DESTROYED;
+    }
     return mutex->owner == scheduler.current_task ? ERR_OK : ERR_STATE;
 }
 
@@ -103,6 +145,12 @@ err_t trt_mutex_lock_timeout(trt_mutex_t *mutex, trt_time_t timeout)
 
     state = critical_enter();
     current = scheduler.current_task;
+
+    if (mutex->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
+    }
 
     if (mutex->owner == 0)
     {
@@ -128,6 +176,10 @@ err_t trt_mutex_lock_timeout(trt_mutex_t *mutex, trt_time_t timeout)
     }
 
     task_yield();
+    if (scheduler.current_task->wait_result == TASK_WAIT_DESTROYED)
+    {
+        return ERR_DESTROYED;
+    }
     return (scheduler.current_task->wait_result == TASK_WAIT_OBJECT &&
             mutex->owner == scheduler.current_task)
                ? ERR_OK
@@ -145,6 +197,12 @@ err_t trt_mutex_unlock(trt_mutex_t *mutex)
     }
 
     state = critical_enter();
+
+    if (mutex->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
+    }
 
     if (mutex->owner != scheduler.current_task || mutex->lock_count == 0)
     {

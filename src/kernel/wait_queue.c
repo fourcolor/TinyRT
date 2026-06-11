@@ -44,7 +44,15 @@ err_t trt_wait_q_block(trt_wait_q_t *queue)
     }
 
     task_yield();
-    return scheduler.current_task->wait_result == TASK_WAIT_OBJECT ? ERR_OK : ERR_STATE;
+    if (scheduler.current_task->wait_result == TASK_WAIT_OBJECT)
+    {
+        return ERR_OK;
+    }
+    if (scheduler.current_task->wait_result == TASK_WAIT_DESTROYED)
+    {
+        return ERR_DESTROYED;
+    }
+    return ERR_STATE;
 }
 
 static err_t trt_wait_q_block_ticks_locked(trt_wait_q_t *queue, uint32_t timeout_ticks)
@@ -85,7 +93,15 @@ static err_t trt_wait_q_block_ticks(trt_wait_q_t *queue, uint32_t timeout_ticks)
     }
 
     task_yield();
-    return scheduler.current_task->wait_result == TASK_WAIT_OBJECT ? ERR_OK : ERR_TIMEOUT;
+    if (scheduler.current_task->wait_result == TASK_WAIT_OBJECT)
+    {
+        return ERR_OK;
+    }
+    if (scheduler.current_task->wait_result == TASK_WAIT_DESTROYED)
+    {
+        return ERR_DESTROYED;
+    }
+    return ERR_TIMEOUT;
 }
 
 err_t trt_wait_q_block_timeout_locked(trt_wait_q_t *queue, trt_time_t timeout)
@@ -108,7 +124,7 @@ err_t trt_wait_q_block_timeout(trt_wait_q_t *queue, trt_time_t timeout)
     return trt_wait_q_block_ticks(queue, timer_us_to_ticks(timeout.us));
 }
 
-task_t *trt_wait_q_wake_one_locked(trt_wait_q_t *queue)
+task_t *trt_wait_q_wake_one_result_locked(trt_wait_q_t *queue, task_wait_result_t result)
 {
     task_t *task;
 
@@ -124,10 +140,15 @@ task_t *trt_wait_q_wake_one_locked(trt_wait_q_t *queue)
     }
     if (task != 0)
     {
-        task->wait_result = TASK_WAIT_OBJECT;
+        task->wait_result = result;
     }
 
     return task;
+}
+
+task_t *trt_wait_q_wake_one_locked(trt_wait_q_t *queue)
+{
+    return trt_wait_q_wake_one_result_locked(queue, TASK_WAIT_OBJECT);
 }
 
 task_t *trt_wait_q_wake_one(trt_wait_q_t *queue)
@@ -160,7 +181,7 @@ task_t *trt_wait_q_wake_one_from_isr(trt_wait_q_t *queue)
     return task;
 }
 
-int trt_wait_q_wake_all_locked(trt_wait_q_t *queue)
+int trt_wait_q_wake_all_result_locked(trt_wait_q_t *queue, task_wait_result_t result)
 {
     int count = 0;
 
@@ -169,12 +190,17 @@ int trt_wait_q_wake_all_locked(trt_wait_q_t *queue)
         return 0;
     }
 
-    while (trt_wait_q_wake_one_locked(queue) != 0)
+    while (trt_wait_q_wake_one_result_locked(queue, result) != 0)
     {
         count++;
     }
 
     return count;
+}
+
+int trt_wait_q_wake_all_locked(trt_wait_q_t *queue)
+{
+    return trt_wait_q_wake_all_result_locked(queue, TASK_WAIT_OBJECT);
 }
 
 int trt_wait_q_wake_all(trt_wait_q_t *queue)

@@ -7,6 +7,24 @@
 #include "task.h"
 #include "wait_queue.h"
 
+static err_t msg_q_wait_result(void)
+{
+    if (scheduler.current_task->wait_result == TASK_WAIT_OBJECT)
+    {
+        return ERR_OK;
+    }
+    if (scheduler.current_task->wait_result == TASK_WAIT_TIMEOUT)
+    {
+        return ERR_TIMEOUT;
+    }
+    if (scheduler.current_task->wait_result == TASK_WAIT_DESTROYED)
+    {
+        return ERR_DESTROYED;
+    }
+
+    return ERR_STATE;
+}
+
 static size_t msg_q_next(trt_msg_q_t *q, size_t index)
 {
     return (index + 1u) % (q->qlen + 1u);
@@ -103,6 +121,7 @@ trt_msg_q_t *trt_msg_q_init(size_t cap, size_t qlen)
     q->qlen = qlen;
     q->head = 0;
     q->tail = 0;
+    q->destroyed = 0;
     trt_wait_q_init(&q->readers);
     trt_wait_q_init(&q->writers);
 
@@ -119,11 +138,15 @@ err_t trt_msg_q_destroy(trt_msg_q_t *q)
     }
 
     state = critical_enter();
-    if (!trt_wait_q_empty(&q->readers) || !trt_wait_q_empty(&q->writers))
+    if (q->destroyed)
     {
         critical_exit(state);
-        return ERR_BUSY;
+        return ERR_STATE;
     }
+
+    q->destroyed = 1;
+    trt_wait_q_wake_all_result_locked(&q->readers, TASK_WAIT_DESTROYED);
+    trt_wait_q_wake_all_result_locked(&q->writers, TASK_WAIT_DESTROYED);
     critical_exit(state);
 
     free(q->buf);
@@ -146,6 +169,12 @@ err_t trt_msg_q_send(trt_msg_q_t *q, void *data, size_t size, trt_time_t timeout
         unsigned char *slot;
 
         state = critical_enter();
+
+        if (q->destroyed)
+        {
+            critical_exit(state);
+            return ERR_DESTROYED;
+        }
 
         if (!trt_msg_q_is_full(q))
         {
@@ -182,13 +211,10 @@ err_t trt_msg_q_send(trt_msg_q_t *q, void *data, size_t size, trt_time_t timeout
         }
 
         task_yield();
-        if (scheduler.current_task->wait_result == TASK_WAIT_TIMEOUT)
+        result = msg_q_wait_result();
+        if (result != ERR_OK)
         {
-            return ERR_TIMEOUT;
-        }
-        if (scheduler.current_task->wait_result != TASK_WAIT_OBJECT)
-        {
-            return ERR_STATE;
+            return result;
         }
     }
 }
@@ -208,6 +234,12 @@ err_t trt_msg_q_send_front(trt_msg_q_t *q, void *data, size_t size, trt_time_t t
         unsigned char *slot;
 
         state = critical_enter();
+
+        if (q->destroyed)
+        {
+            critical_exit(state);
+            return ERR_DESTROYED;
+        }
 
         if (!trt_msg_q_is_full(q))
         {
@@ -244,13 +276,10 @@ err_t trt_msg_q_send_front(trt_msg_q_t *q, void *data, size_t size, trt_time_t t
         }
 
         task_yield();
-        if (scheduler.current_task->wait_result == TASK_WAIT_TIMEOUT)
+        result = msg_q_wait_result();
+        if (result != ERR_OK)
         {
-            return ERR_TIMEOUT;
-        }
-        if (scheduler.current_task->wait_result != TASK_WAIT_OBJECT)
-        {
-            return ERR_STATE;
+            return result;
         }
     }
 }
@@ -270,6 +299,12 @@ err_t trt_msg_q_recv(trt_msg_q_t *q, void *buf, trt_time_t timeout)
         unsigned char *slot;
 
         state = critical_enter();
+
+        if (q->destroyed)
+        {
+            critical_exit(state);
+            return ERR_DESTROYED;
+        }
 
         if (!trt_msg_q_is_empty(q))
         {
@@ -305,13 +340,10 @@ err_t trt_msg_q_recv(trt_msg_q_t *q, void *buf, trt_time_t timeout)
         }
 
         task_yield();
-        if (scheduler.current_task->wait_result == TASK_WAIT_TIMEOUT)
+        result = msg_q_wait_result();
+        if (result != ERR_OK)
         {
-            return ERR_TIMEOUT;
-        }
-        if (scheduler.current_task->wait_result != TASK_WAIT_OBJECT)
-        {
-            return ERR_STATE;
+            return result;
         }
     }
 }
@@ -331,6 +363,12 @@ err_t trt_msg_q_peek(trt_msg_q_t *q, void *buf, trt_time_t timeout)
         unsigned char *slot;
 
         state = critical_enter();
+
+        if (q->destroyed)
+        {
+            critical_exit(state);
+            return ERR_DESTROYED;
+        }
 
         if (!trt_msg_q_is_empty(q))
         {
@@ -365,13 +403,10 @@ err_t trt_msg_q_peek(trt_msg_q_t *q, void *buf, trt_time_t timeout)
         }
 
         task_yield();
-        if (scheduler.current_task->wait_result == TASK_WAIT_TIMEOUT)
+        result = msg_q_wait_result();
+        if (result != ERR_OK)
         {
-            return ERR_TIMEOUT;
-        }
-        if (scheduler.current_task->wait_result != TASK_WAIT_OBJECT)
-        {
-            return ERR_STATE;
+            return result;
         }
     }
 }
@@ -392,6 +427,12 @@ err_t trt_msg_q_send_from_isr(trt_msg_q_t *q, void *data, size_t size)
     {
         critical_exit(state);
         return ERR_INVAL;
+    }
+
+    if (q->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
     }
 
     if (trt_msg_q_is_full(q))
@@ -427,6 +468,12 @@ err_t trt_msg_q_recv_from_isr(trt_msg_q_t *q, void *buf)
         return ERR_INVAL;
     }
 
+    if (q->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
+    }
+
     if (trt_msg_q_is_empty(q))
     {
         critical_exit(state);
@@ -457,6 +504,12 @@ err_t trt_msg_q_peek_from_isr(trt_msg_q_t *q, void *buf)
     {
         critical_exit(state);
         return ERR_INVAL;
+    }
+
+    if (q->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
     }
 
     if (trt_msg_q_is_empty(q))

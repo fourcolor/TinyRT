@@ -162,6 +162,36 @@ void timer_stop(timer_t *timer)
     critical_exit(state);
 }
 
+err_t timer_destroy(timer_t *timer)
+{
+    uint32_t state;
+
+    if (timer == 0)
+    {
+        return ERR_INVAL;
+    }
+
+    state = critical_enter();
+
+    if (timer->active)
+    {
+        list_del_init(&timer->node);
+    }
+    else if (!list_empty(&timer->node))
+    {
+        list_del_init(&timer->node);
+    }
+
+    timer->deadline = 0;
+    timer->period = 0;
+    timer->callback = 0;
+    timer->arg = 0;
+    timer->active = 0;
+
+    critical_exit(state);
+    return ERR_OK;
+}
+
 int timer_active(timer_t *timer)
 {
     return timer != 0 && timer->active;

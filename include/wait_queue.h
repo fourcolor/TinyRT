@@ -20,6 +20,8 @@ err_t trt_wait_q_block_timeout(trt_wait_q_t *queue, trt_time_t timeout);
 task_t *trt_wait_q_wake_one_locked(trt_wait_q_t *queue);
 task_t *trt_wait_q_wake_one(trt_wait_q_t *queue);
 task_t *trt_wait_q_wake_one_from_isr(trt_wait_q_t *queue);
+task_t *trt_wait_q_wake_one_result_locked(trt_wait_q_t *queue, task_wait_result_t result);
 int trt_wait_q_wake_all_locked(trt_wait_q_t *queue);
 int trt_wait_q_wake_all(trt_wait_q_t *queue);
 int trt_wait_q_wake_all_from_isr(trt_wait_q_t *queue);
+int trt_wait_q_wake_all_result_locked(trt_wait_q_t *queue, task_wait_result_t result);

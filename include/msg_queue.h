@@ -10,6 +10,7 @@ typedef struct
     size_t qlen;
     volatile size_t head;
     volatile size_t tail;
+    uint8_t destroyed;
     trt_wait_q_t readers;
     trt_wait_q_t writers;
 } trt_msg_q_t;

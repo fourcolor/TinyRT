@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "error.h"
 #include "list.h"
 
 typedef void (*timer_callback_t)(void *);
@@ -39,5 +40,6 @@ int timer_expired(uint32_t now, uint32_t deadline);
 void timer_setup(timer_t *timer, timer_callback_t callback, void *arg);
 void timer_start(timer_t *timer, uint32_t delay_ticks, uint32_t period_ticks);
 void timer_stop(timer_t *timer);
+err_t timer_destroy(timer_t *timer);
 int timer_active(timer_t *timer);
 void timer_run_expired(void);

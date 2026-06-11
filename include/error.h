@@ -10,4 +10,5 @@ typedef enum
     ERR_LOCKED = -5,
     ERR_PERM = -6,
     ERR_STATE = -7,
+    ERR_DESTROYED = -8,
 } err_t;

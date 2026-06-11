@@ -11,6 +11,8 @@ void trt_sem_init(trt_sem_t *sem, int max, int cnt)
 {
     sem->cnt = (cnt < 0) ? 0 : cnt;
     sem->max = (max < cnt) ? cnt : max;
+    sem->destroyed = 0;
+    sem->dynamic = 0;
     INIT_LIST_HEAD(&(sem->waiters.waiters));
 }
 
@@ -23,7 +25,39 @@ trt_sem_t *trt_sem_create(int max, int cnt)
     }
 
     trt_sem_init(sem, max, cnt);
+    sem->dynamic = 1;
     return sem;
+}
+
+err_t trt_sem_destroy(trt_sem_t *sem)
+{
+    int dynamic;
+    critical_state_t state;
+
+    if (sem == 0)
+    {
+        return ERR_INVAL;
+    }
+
+    state = critical_enter();
+    if (sem->destroyed)
+    {
+        critical_exit(state);
+        return ERR_STATE;
+    }
+
+    sem->destroyed = 1;
+    sem->cnt = 0;
+    dynamic = sem->dynamic;
+    trt_wait_q_wake_all_result_locked(&sem->waiters, TASK_WAIT_DESTROYED);
+    critical_exit(state);
+
+    if (dynamic)
+    {
+        free(sem);
+    }
+
+    return ERR_OK;
 }
 
 err_t trt_sem_post(trt_sem_t *sem)
@@ -34,6 +68,12 @@ err_t trt_sem_post(trt_sem_t *sem)
     {
         critical_exit(state);
         return ERR_INVAL;
+    }
+
+    if (sem->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
     }
 
     if (!trt_wait_q_empty(&sem->waiters))
@@ -71,6 +111,12 @@ err_t trt_sem_post_from_isr(trt_sem_t *sem)
         return ERR_INVAL;
     }
 
+    if (sem->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
+    }
+
     if (!trt_wait_q_empty(&sem->waiters))
     {
         trt_wait_q_wake_one_from_isr(&sem->waiters);
@@ -101,6 +147,12 @@ err_t trt_sem_wait(trt_sem_t *sem)
         return ERR_INVAL;
     }
 
+    if (sem->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
+    }
+
     if (sem->cnt > 0)
     {
         sem->cnt--;
@@ -125,7 +177,15 @@ err_t trt_sem_wait(trt_sem_t *sem)
 
     task_yield();
 
-    return scheduler.current_task->wait_result == TASK_WAIT_OBJECT ? ERR_OK : ERR_STATE;
+    if (scheduler.current_task->wait_result == TASK_WAIT_OBJECT)
+    {
+        return ERR_OK;
+    }
+    if (scheduler.current_task->wait_result == TASK_WAIT_DESTROYED)
+    {
+        return ERR_DESTROYED;
+    }
+    return ERR_STATE;
 }
 
 err_t trt_sem_wait_timeout(trt_sem_t *sem, trt_time_t timeout)
@@ -143,6 +203,12 @@ err_t trt_sem_wait_timeout(trt_sem_t *sem, trt_time_t timeout)
     {
         critical_exit(state);
         return ERR_INVAL;
+    }
+
+    if (sem->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
     }
 
     if (sem->cnt > 0)
@@ -168,7 +234,15 @@ err_t trt_sem_wait_timeout(trt_sem_t *sem, trt_time_t timeout)
     }
 
     task_yield();
-    return scheduler.current_task->wait_result == TASK_WAIT_OBJECT ? ERR_OK : ERR_TIMEOUT;
+    if (scheduler.current_task->wait_result == TASK_WAIT_OBJECT)
+    {
+        return ERR_OK;
+    }
+    if (scheduler.current_task->wait_result == TASK_WAIT_DESTROYED)
+    {
+        return ERR_DESTROYED;
+    }
+    return ERR_TIMEOUT;
 }
 
 err_t trt_sem_trywait(trt_sem_t *sem)
@@ -179,6 +253,12 @@ err_t trt_sem_trywait(trt_sem_t *sem)
     {
         critical_exit(state);
         return ERR_INVAL;
+    }
+
+    if (sem->destroyed)
+    {
+        critical_exit(state);
+        return ERR_DESTROYED;
     }
 
     if (sem->cnt == 0)

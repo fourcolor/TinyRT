@@ -20,6 +20,7 @@ typedef enum
     TASK_WAIT_NONE = 0,
     TASK_WAIT_OBJECT,
     TASK_WAIT_TIMEOUT,
+    TASK_WAIT_DESTROYED,
 } task_wait_result_t;
 
 typedef struct task_t
