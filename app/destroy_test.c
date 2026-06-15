@@ -39,7 +39,7 @@ static void sem_waiter_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -48,7 +48,7 @@ static void sem_destroyer_task(void *arg)
     err_t result;
 
     (void)arg;
-    task_delay(timer_ms_to_ticks(200));
+    task_sleep(TRT_MS(200));
 
     result = trt_sem_destroy(&sem_destroy_test);
     LOG_INFO("destroy sem result=%d tick=%lu\n", result, timer_ticks());
@@ -59,7 +59,7 @@ static void sem_destroyer_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -72,7 +72,7 @@ static void mutex_holder_task(void *arg)
 
     result = trt_mutex_lock(&mutex_destroy_test);
     LOG_INFO("destroy mutex holder lock result=%d tick=%lu\n", result, timer_ticks());
-    task_delay(timer_ms_to_ticks(700));
+    task_sleep(TRT_MS(700));
 
     result = trt_mutex_unlock(&mutex_destroy_test);
     LOG_INFO("destroy mutex holder unlock result=%d expect=%d tick=%lu\n", result, ERR_DESTROYED,
@@ -80,7 +80,7 @@ static void mutex_holder_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -89,7 +89,7 @@ static void mutex_waiter_task(void *arg)
     err_t result;
 
     (void)arg;
-    task_delay(timer_ms_to_ticks(50));
+    task_sleep(TRT_MS(50));
 
     result = trt_mutex_lock(&mutex_destroy_test);
     LOG_INFO("destroy mutex wait result=%d expect=%d tick=%lu\n", result, ERR_DESTROYED,
@@ -97,7 +97,7 @@ static void mutex_waiter_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -106,14 +106,14 @@ static void mutex_destroyer_task(void *arg)
     err_t result;
 
     (void)arg;
-    task_delay(timer_ms_to_ticks(300));
+    task_sleep(TRT_MS(300));
 
     result = trt_mutex_destroy(&mutex_destroy_test);
     LOG_INFO("destroy mutex result=%d tick=%lu\n", result, timer_ticks());
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -131,7 +131,7 @@ static void msg_reader_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -149,7 +149,7 @@ static void msg_writer_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -158,7 +158,7 @@ static void msg_destroyer_task(void *arg)
     err_t result;
 
     (void)arg;
-    task_delay(timer_ms_to_ticks(400));
+    task_sleep(TRT_MS(400));
 
     result = trt_msg_q_destroy(msg_read_q);
     LOG_INFO("destroy msg read_q result=%d tick=%lu\n", result, timer_ticks());
@@ -170,7 +170,7 @@ static void msg_destroyer_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -182,19 +182,19 @@ static void timer_destroy_task(void *arg)
     LOG_INFO("destroy timer test start\n");
 
     timer_setup(&destroy_timer, destroy_timer_callback, 0);
-    timer_start(&destroy_timer, timer_ms_to_ticks(500), 0);
-    task_delay(timer_ms_to_ticks(100));
+    timer_start(&destroy_timer, TRT_MS(500), TRT_US(0));
+    task_sleep(TRT_MS(100));
 
     result = timer_destroy(&destroy_timer);
     LOG_INFO("destroy timer result=%d tick=%lu\n", result, timer_ticks());
 
-    task_delay(timer_ms_to_ticks(700));
+    task_sleep(TRT_MS(700));
     LOG_INFO("destroy timer hits=%lu expect=0 active=%d tick=%lu\n", timer_hits,
              timer_active(&destroy_timer), timer_ticks());
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 

@@ -5,6 +5,7 @@
 #include "error.h"
 #include "list.h"
 #include "rtos_config.h"
+#include "timer.h"
 
 typedef enum
 {
@@ -50,7 +51,8 @@ err_t task_delete(task_t *task);
 void task_exit(void) __attribute__((noreturn));
 void task_cleanup_deleted(void);
 void task_yield(void) __attribute__((noinline));
-void task_delay(uint32_t ticks);
+void task_sleep(trt_time_t delay);
+void task_delay_ticks(uint32_t ticks);
 void rtos_start(void) __attribute__((noreturn));
 
 void task_start_first(uint32_t *sp) __attribute__((noreturn));

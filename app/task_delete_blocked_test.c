@@ -39,7 +39,7 @@ static void sem_waiter_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -56,7 +56,7 @@ static void sem_timeout_waiter_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -74,7 +74,7 @@ static void msg_reader_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -92,7 +92,7 @@ static void msg_writer_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -101,13 +101,13 @@ static void delay_task(void *arg)
     (void)arg;
     LOG_INFO("delete blocked delay task start tick=%lu\n", timer_ticks());
 
-    task_delay(timer_sec_to_ticks(30));
+    task_sleep(TRT_SEC(30));
     unexpected_wakes++;
     LOG_ERROR("delete blocked delay task woke tick=%lu\n", timer_ticks());
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -160,7 +160,7 @@ static void supervisor_task(void *arg)
     check_result("task create", sem_waiter != 0 && sem_timeout_waiter != 0 && msg_reader != 0 &&
                                     msg_writer != 0 && delay_blocked != 0);
 
-    task_delay(timer_ms_to_ticks(200));
+    task_sleep(TRT_MS(200));
 
     state = critical_enter();
     waiters_ready = !trt_wait_q_empty(&delete_sem.waiters) && !trt_wait_q_empty(&read_q->readers) &&
@@ -184,7 +184,7 @@ static void supervisor_task(void *arg)
     critical_exit(state);
     check_result("blocked lists cleaned", waiters_ready);
 
-    task_delay(timer_ms_to_ticks(100));
+    task_sleep(TRT_MS(100));
 
     result = trt_sem_post(&delete_sem);
     check_result("sem usable after deletes", result == ERR_OK);
@@ -197,7 +197,7 @@ static void supervisor_task(void *arg)
     check_result("destroy write queue", result == ERR_OK);
     write_q = 0;
 
-    task_delay(timer_ms_to_ticks(1200));
+    task_sleep(TRT_MS(1200));
     check_result("deleted tasks stayed deleted", unexpected_wakes == 0);
 
     LOG_INFO("DELETE_BLOCKED summary errors=%lu unexpected_wakes=%lu tick=%lu\n", errors,
@@ -205,7 +205,7 @@ static void supervisor_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 

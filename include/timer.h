@@ -38,7 +38,8 @@ uint32_t timer_sec_to_ticks(uint64_t sec);
 int timer_expired(uint32_t now, uint32_t deadline);
 
 void timer_setup(timer_t *timer, timer_callback_t callback, void *arg);
-void timer_start(timer_t *timer, uint32_t delay_ticks, uint32_t period_ticks);
+void timer_start(timer_t *timer, trt_time_t delay, trt_time_t period);
+void timer_start_ticks(timer_t *timer, uint32_t delay_ticks, uint32_t period_ticks);
 void timer_stop(timer_t *timer);
 err_t timer_destroy(timer_t *timer);
 int timer_active(timer_t *timer);

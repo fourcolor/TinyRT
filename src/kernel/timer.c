@@ -118,7 +118,7 @@ void timer_setup(timer_t *timer, timer_callback_t callback, void *arg)
     timer->active = 0;
 }
 
-void timer_start(timer_t *timer, uint32_t delay_ticks, uint32_t period_ticks)
+void timer_start_ticks(timer_t *timer, uint32_t delay_ticks, uint32_t period_ticks)
 {
     uint32_t state;
 
@@ -140,6 +140,16 @@ void timer_start(timer_t *timer, uint32_t delay_ticks, uint32_t period_ticks)
     timer_insert_locked(timer);
 
     critical_exit(state);
+}
+
+void timer_start(timer_t *timer, trt_time_t delay, trt_time_t period)
+{
+    if (delay.us == TRT_TIME_FOREVER_US || period.us == TRT_TIME_FOREVER_US)
+    {
+        return;
+    }
+
+    timer_start_ticks(timer, timer_us_to_ticks(delay.us), timer_us_to_ticks(period.us));
 }
 
 void timer_stop(timer_t *timer)

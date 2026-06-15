@@ -45,7 +45,7 @@ static void rr_monitor(void *arg)
         uint32_t delta_a;
         uint32_t delta_b;
 
-        task_delay(1000);
+        task_sleep(TRT_MS(1000));
 
         now_a = rr_a_count;
         now_b = rr_b_count;

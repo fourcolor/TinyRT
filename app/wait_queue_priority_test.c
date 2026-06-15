@@ -17,7 +17,7 @@ static void high_waiter(void *arg)
 
     for (;;)
     {
-        task_delay(1000);
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -31,7 +31,7 @@ static void low_waiter(void *arg)
 
     for (;;)
     {
-        task_delay(1000);
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -40,17 +40,17 @@ static void poster(void *arg)
     (void)arg;
 
     LOG_INFO("priority poster start\n");
-    task_delay(100);
+    task_sleep(TRT_MS(100));
     trt_sem_post(&priority_sem);
     LOG_INFO("priority post 1 tick=%lu\n", timer_ticks());
 
-    task_delay(100);
+    task_sleep(TRT_MS(100));
     trt_sem_post(&priority_sem);
     LOG_INFO("priority post 2 tick=%lu\n", timer_ticks());
 
     for (;;)
     {
-        task_delay(1000);
+        task_sleep(TRT_MS(1000));
     }
 }
 

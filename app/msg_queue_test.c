@@ -143,7 +143,7 @@ static void task_producer(void *arg)
                      timer_ticks());
         }
 
-        task_delay(timer_ms_to_ticks(20));
+        task_sleep(TRT_MS(20));
     }
 }
 
@@ -181,7 +181,7 @@ static void task_consumer(void *arg)
                      expected_seq, timer_ticks());
         }
 
-        task_delay(timer_ms_to_ticks(35));
+        task_sleep(TRT_MS(35));
     }
 }
 
@@ -189,20 +189,20 @@ static void isr_supervisor(void *arg)
 {
     uint32_t expected_isr_seq = 0;
     uint32_t feed_seq = 0;
-    uint32_t last_log_tick = 0;
+    uint64_t last_log_us = 0;
 
     (void)arg;
 
     timer_setup(&isr_producer_timer, isr_producer_cb, 0);
     timer_setup(&isr_consumer_timer, isr_consumer_cb, 0);
-    timer_start(&isr_producer_timer, timer_ms_to_ticks(50), timer_ms_to_ticks(50));
-    timer_start(&isr_consumer_timer, timer_ms_to_ticks(70), timer_ms_to_ticks(70));
+    timer_start(&isr_producer_timer, TRT_MS(50), TRT_MS(50));
+    timer_start(&isr_consumer_timer, TRT_MS(70), TRT_MS(70));
 
     for (;;)
     {
         test_msg_t msg;
         err_t result;
-        uint32_t now;
+        uint64_t now_us;
 
         result = trt_msg_q_recv(isr_producer_q, &msg, TRT_MS(100));
         if (result == ERR_OK)
@@ -242,15 +242,15 @@ static void isr_supervisor(void *arg)
                      timer_ticks());
         }
 
-        now = timer_ticks();
-        if ((uint32_t)(now - last_log_tick) >= timer_ms_to_ticks(1000))
+        now_us = timer_us();
+        if ((now_us - last_log_us) >= TRT_SEC(1).us)
         {
-            last_log_tick = now;
+            last_log_us = now_us;
             LOG_INFO("MSG_Q loop task=%lu/%lu task_err=%lu isr_send=%lu busy=%lu isr_recv=%lu "
                      "isr_feed=%lu isr_consume=%lu empty=%lu isr_err=%lu tick=%lu\n",
                      task_sent, task_received, task_errors, isr_sent, isr_send_busy,
                      isr_received_by_task, isr_consumer_fed, isr_consumed, isr_consumer_empty,
-                     isr_errors, now);
+                     isr_errors, timer_ticks());
         }
     }
 }

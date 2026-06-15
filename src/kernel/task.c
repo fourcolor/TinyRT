@@ -202,7 +202,7 @@ void __attribute__((noinline)) task_yield(void)
     arch_yield();
 }
 
-void task_delay(uint32_t ticks)
+void task_delay_ticks(uint32_t ticks)
 {
     uint32_t wakeup;
     critical_state_t state;
@@ -238,4 +238,9 @@ void task_delay(uint32_t ticks)
         critical_exit(state);
         task_yield();
     }
+}
+
+void task_sleep(trt_time_t delay)
+{
+    task_delay_ticks(timer_us_to_ticks(delay.us));
 }

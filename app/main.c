@@ -13,9 +13,9 @@ static void led_task(void *arg)
     for (;;)
     {
         gpio_write(BOARD_LED_PIN, 1);
-        task_delay(timer_ms_to_ticks(500));
+        task_sleep(TRT_MS(500));
         gpio_write(BOARD_LED_PIN, 0);
-        task_delay(timer_ms_to_ticks(500));
+        task_sleep(TRT_MS(500));
     }
 }
 

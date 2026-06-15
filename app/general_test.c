@@ -51,7 +51,7 @@ static void sem_consumer_task(void *arg)
         {
             errors++;
             LOG_INFO("general sem wait error=%d tick=%lu\n", result, timer_ticks());
-            task_delay(timer_ms_to_ticks(100));
+            task_sleep(TRT_MS(100));
         }
     }
 }
@@ -62,11 +62,11 @@ static void timer_task(void *arg)
     LOG_INFO("general timer task start\n");
 
     timer_setup(&general_timer, general_timer_callback, 0);
-    timer_start(&general_timer, timer_ms_to_ticks(250), timer_ms_to_ticks(250));
+    timer_start(&general_timer, TRT_MS(250), TRT_MS(250));
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
@@ -77,7 +77,7 @@ static void sem_producer_task(void *arg)
 
     for (;;)
     {
-        task_delay(timer_ms_to_ticks(350));
+        task_sleep(TRT_MS(350));
         if (trt_sem_post(&general_sem) == ERR_OK)
         {
             sem_posts++;
@@ -102,7 +102,7 @@ static void mutex_task(void *arg)
         if (result == ERR_OK)
         {
             mutex_entries++;
-            task_delay(timer_ms_to_ticks(20));
+            task_sleep(TRT_MS(20));
             trt_mutex_unlock(&general_mutex);
         }
         else
@@ -111,7 +111,7 @@ static void mutex_task(void *arg)
             LOG_INFO("general mutex lock error=%d id=%lu tick=%lu\n", result, id, timer_ticks());
         }
 
-        task_delay(timer_ms_to_ticks(120 + (id * 30)));
+        task_sleep(TRT_MS(120 + (id * 30)));
     }
 }
 
@@ -141,7 +141,7 @@ static void msg_producer_task(void *arg)
             LOG_INFO("general msg send error=%d seq=%lu tick=%lu\n", result, seq, timer_ticks());
         }
 
-        task_delay(timer_ms_to_ticks(80));
+        task_sleep(TRT_MS(80));
     }
 }
 
@@ -179,7 +179,7 @@ static void msg_consumer_task(void *arg)
             LOG_INFO("general msg recv error=%d tick=%lu\n", result, timer_ticks());
         }
 
-        task_delay(timer_ms_to_ticks(110));
+        task_sleep(TRT_MS(110));
     }
 }
 
@@ -194,7 +194,7 @@ static void monitor_task(void *arg)
             "GENERAL tick=%lu timer=%lu sem_post=%lu sem_wake=%lu mutex=%lu msg=%lu/%lu err=%lu\n",
             timer_ticks(), timer_events, sem_posts, sem_wakes, mutex_entries, msg_sent,
             msg_received, errors);
-        task_delay(timer_ms_to_ticks(1000));
+        task_sleep(TRT_MS(1000));
     }
 }
 
