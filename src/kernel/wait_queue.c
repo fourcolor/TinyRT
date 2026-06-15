@@ -6,36 +6,36 @@
 #include "task.h"
 #include "timer.h"
 
-void trt_wait_q_init(trt_wait_q_t *queue)
+void trt_wait_q_init(trt_wait_q_t *wq)
 {
-    INIT_LIST_HEAD(&queue->waiters);
+    INIT_LIST_HEAD(&wq->waiters);
 }
 
-int trt_wait_q_empty(trt_wait_q_t *queue)
+int trt_wait_q_empty(trt_wait_q_t *wq)
 {
-    return list_empty(&queue->waiters);
+    return list_empty(&wq->waiters);
 }
 
-err_t trt_wait_q_block_locked(trt_wait_q_t *queue)
+err_t trt_wait_q_block_locked(trt_wait_q_t *wq)
 {
-    if (queue == 0 || scheduler.current_task == 0 || sched_is_locked())
+    if (wq == 0 || scheduler.current_task == 0 || sched_is_locked())
     {
         sched_set_pending();
-        return queue == 0 || scheduler.current_task == 0 ? ERR_INVAL : ERR_LOCKED;
+        return wq == 0 || scheduler.current_task == 0 ? ERR_INVAL : ERR_LOCKED;
     }
 
     scheduler.current_task->wait_result = TASK_WAIT_NONE;
-    sched_block_current(&queue->waiters);
+    sched_block_current(&wq->waiters);
     return ERR_OK;
 }
 
-err_t trt_wait_q_block(trt_wait_q_t *queue)
+err_t trt_wait_q_block(trt_wait_q_t *wq)
 {
     int result;
     critical_state_t state;
 
     state = critical_enter();
-    result = trt_wait_q_block_locked(queue);
+    result = trt_wait_q_block_locked(wq);
     critical_exit(state);
 
     if (result != 0)
@@ -55,7 +55,7 @@ err_t trt_wait_q_block(trt_wait_q_t *queue)
     return ERR_STATE;
 }
 
-static err_t trt_wait_q_block_ticks_locked(trt_wait_q_t *queue, uint32_t timeout_ticks)
+static err_t trt_wait_q_block_ticks_locked(trt_wait_q_t *wq, uint32_t timeout_ticks)
 {
     int result;
 
@@ -64,7 +64,7 @@ static err_t trt_wait_q_block_ticks_locked(trt_wait_q_t *queue, uint32_t timeout
         return ERR_TIMEOUT;
     }
 
-    result = trt_wait_q_block_locked(queue);
+    result = trt_wait_q_block_locked(wq);
     if (result != 0)
     {
         return result;
@@ -78,13 +78,13 @@ static err_t trt_wait_q_block_ticks_locked(trt_wait_q_t *queue, uint32_t timeout
     return ERR_OK;
 }
 
-static err_t trt_wait_q_block_ticks(trt_wait_q_t *queue, uint32_t timeout_ticks)
+static err_t trt_wait_q_block_ticks(trt_wait_q_t *wq, uint32_t timeout_ticks)
 {
     int result;
     critical_state_t state;
 
     state = critical_enter();
-    result = trt_wait_q_block_ticks_locked(queue, timeout_ticks);
+    result = trt_wait_q_block_ticks_locked(wq, timeout_ticks);
     critical_exit(state);
 
     if (result != 0)
@@ -104,36 +104,36 @@ static err_t trt_wait_q_block_ticks(trt_wait_q_t *queue, uint32_t timeout_ticks)
     return ERR_TIMEOUT;
 }
 
-err_t trt_wait_q_block_timeout_locked(trt_wait_q_t *queue, trt_time_t timeout)
+err_t trt_wait_q_block_timeout_locked(trt_wait_q_t *wq, trt_time_t timeout)
 {
     if (timeout.us == TRT_TIME_FOREVER_US)
     {
-        return trt_wait_q_block_locked(queue);
+        return trt_wait_q_block_locked(wq);
     }
 
-    return trt_wait_q_block_ticks_locked(queue, timer_us_to_ticks(timeout.us));
+    return trt_wait_q_block_ticks_locked(wq, timer_us_to_ticks(timeout.us));
 }
 
-err_t trt_wait_q_block_timeout(trt_wait_q_t *queue, trt_time_t timeout)
+err_t trt_wait_q_block_timeout(trt_wait_q_t *wq, trt_time_t timeout)
 {
     if (timeout.us == TRT_TIME_FOREVER_US)
     {
-        return trt_wait_q_block(queue);
+        return trt_wait_q_block(wq);
     }
 
-    return trt_wait_q_block_ticks(queue, timer_us_to_ticks(timeout.us));
+    return trt_wait_q_block_ticks(wq, timer_us_to_ticks(timeout.us));
 }
 
-task_t *trt_wait_q_wake_one_result_locked(trt_wait_q_t *queue, task_wait_result_t result)
+task_t *trt_wait_q_wake_one_result_locked(trt_wait_q_t *wq, task_wait_result_t result)
 {
     task_t *task;
 
-    if (queue == 0)
+    if (wq == 0)
     {
         return 0;
     }
 
-    task = sched_wake_one(&queue->waiters);
+    task = sched_wake_one(&wq->waiters);
     if (task != 0 && sched_is_locked())
     {
         sched_set_pending();
@@ -146,24 +146,24 @@ task_t *trt_wait_q_wake_one_result_locked(trt_wait_q_t *queue, task_wait_result_
     return task;
 }
 
-task_t *trt_wait_q_wake_one_locked(trt_wait_q_t *queue)
+task_t *trt_wait_q_wake_one_locked(trt_wait_q_t *wq)
 {
-    return trt_wait_q_wake_one_result_locked(queue, TASK_WAIT_OBJECT);
+    return trt_wait_q_wake_one_result_locked(wq, TASK_WAIT_OBJECT);
 }
 
-task_t *trt_wait_q_wake_one(trt_wait_q_t *queue)
+task_t *trt_wait_q_wake_one(trt_wait_q_t *wq)
 {
     task_t *task;
     critical_state_t state;
 
     state = critical_enter();
-    task = trt_wait_q_wake_one_locked(queue);
+    task = trt_wait_q_wake_one_locked(wq);
     critical_exit(state);
 
     return task;
 }
 
-task_t *trt_wait_q_wake_one_from_isr(trt_wait_q_t *queue)
+task_t *trt_wait_q_wake_one_from_isr(trt_wait_q_t *wq)
 {
     task_t *task;
 
@@ -172,7 +172,7 @@ task_t *trt_wait_q_wake_one_from_isr(trt_wait_q_t *queue)
         return 0;
     }
 
-    task = trt_wait_q_wake_one_locked(queue);
+    task = trt_wait_q_wake_one_locked(wq);
     if (task != 0)
     {
         sched_request_from_isr();
@@ -181,16 +181,16 @@ task_t *trt_wait_q_wake_one_from_isr(trt_wait_q_t *queue)
     return task;
 }
 
-int trt_wait_q_wake_all_result_locked(trt_wait_q_t *queue, task_wait_result_t result)
+int trt_wait_q_wake_all_result_locked(trt_wait_q_t *wq, task_wait_result_t result)
 {
     int count = 0;
 
-    if (queue == 0)
+    if (wq == 0)
     {
         return 0;
     }
 
-    while (trt_wait_q_wake_one_result_locked(queue, result) != 0)
+    while (trt_wait_q_wake_one_result_locked(wq, result) != 0)
     {
         count++;
     }
@@ -198,24 +198,24 @@ int trt_wait_q_wake_all_result_locked(trt_wait_q_t *queue, task_wait_result_t re
     return count;
 }
 
-int trt_wait_q_wake_all_locked(trt_wait_q_t *queue)
+int trt_wait_q_wake_all_locked(trt_wait_q_t *wq)
 {
-    return trt_wait_q_wake_all_result_locked(queue, TASK_WAIT_OBJECT);
+    return trt_wait_q_wake_all_result_locked(wq, TASK_WAIT_OBJECT);
 }
 
-int trt_wait_q_wake_all(trt_wait_q_t *queue)
+int trt_wait_q_wake_all(trt_wait_q_t *wq)
 {
     int count;
     critical_state_t state;
 
     state = critical_enter();
-    count = trt_wait_q_wake_all_locked(queue);
+    count = trt_wait_q_wake_all_locked(wq);
     critical_exit(state);
 
     return count;
 }
 
-int trt_wait_q_wake_all_from_isr(trt_wait_q_t *queue)
+int trt_wait_q_wake_all_from_isr(trt_wait_q_t *wq)
 {
     int count;
 
@@ -224,7 +224,7 @@ int trt_wait_q_wake_all_from_isr(trt_wait_q_t *queue)
         return 0;
     }
 
-    count = trt_wait_q_wake_all_locked(queue);
+    count = trt_wait_q_wake_all_locked(wq);
     if (count != 0)
     {
         sched_request_from_isr();

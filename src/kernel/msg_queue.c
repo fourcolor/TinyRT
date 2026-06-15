@@ -25,9 +25,9 @@ static err_t msg_q_wait_result(void)
     return ERR_STATE;
 }
 
-static size_t msg_q_next(trt_msg_q_t *q, size_t index)
+static size_t msg_q_next(trt_msg_q_t *mq, size_t index)
 {
-    return (index + 1u) % (q->qlen + 1u);
+    return (index + 1u) % (mq->qlen + 1u);
 }
 
 static void msg_q_zero(unsigned char *dst, size_t size)
@@ -51,44 +51,44 @@ static void msg_q_copy(unsigned char *dst, const void *src, size_t size)
     }
 }
 
-int trt_msg_q_is_full(trt_msg_q_t *q)
+int trt_msg_q_is_full(trt_msg_q_t *mq)
 {
-    if (q == 0)
+    if (mq == 0)
     {
         return 0;
     }
 
-    return msg_q_next(q, q->head) == q->tail;
+    return msg_q_next(mq, mq->head) == mq->tail;
 }
 
-int trt_msg_q_is_empty(trt_msg_q_t *q)
+int trt_msg_q_is_empty(trt_msg_q_t *mq)
 {
-    if (q == 0)
+    if (mq == 0)
     {
         return 1;
     }
 
-    return q->head == q->tail;
+    return mq->head == mq->tail;
 }
 
-size_t trt_msg_q_count(trt_msg_q_t *q)
+size_t trt_msg_q_count(trt_msg_q_t *mq)
 {
     size_t count;
     critical_state_t state;
 
-    if (q == 0)
+    if (mq == 0)
     {
         return 0;
     }
 
     state = critical_enter();
-    if (q->head >= q->tail)
+    if (mq->head >= mq->tail)
     {
-        count = q->head - q->tail;
+        count = mq->head - mq->tail;
     }
     else
     {
-        count = (q->qlen + 1u) - q->tail + q->head;
+        count = (mq->qlen + 1u) - mq->tail + mq->head;
     }
     critical_exit(state);
 
@@ -97,69 +97,69 @@ size_t trt_msg_q_count(trt_msg_q_t *q)
 
 trt_msg_q_t *trt_msg_q_init(size_t cap, size_t qlen)
 {
-    trt_msg_q_t *q;
+    trt_msg_q_t *mq;
 
     if (!cap || !qlen)
     {
         return 0;
     }
 
-    q = calloc(1, sizeof(*q));
-    if (q == 0)
+    mq = calloc(1, sizeof(*mq));
+    if (mq == 0)
     {
         return 0;
     }
 
-    q->buf = calloc(qlen + 1u, cap);
-    if (q->buf == 0)
+    mq->buf = calloc(qlen + 1u, cap);
+    if (mq->buf == 0)
     {
-        free(q);
+        free(mq);
         return 0;
     }
 
-    q->cap = cap;
-    q->qlen = qlen;
-    q->head = 0;
-    q->tail = 0;
-    q->destroyed = 0;
-    trt_wait_q_init(&q->readers);
-    trt_wait_q_init(&q->writers);
+    mq->cap = cap;
+    mq->qlen = qlen;
+    mq->head = 0;
+    mq->tail = 0;
+    mq->destroyed = 0;
+    trt_wait_q_init(&mq->readers);
+    trt_wait_q_init(&mq->writers);
 
-    return q;
+    return mq;
 }
 
-err_t trt_msg_q_destroy(trt_msg_q_t *q)
+err_t trt_msg_q_destroy(trt_msg_q_t *mq)
 {
     critical_state_t state;
 
-    if (q == 0)
+    if (mq == 0)
     {
         return ERR_INVAL;
     }
 
     state = critical_enter();
-    if (q->destroyed)
+    if (mq->destroyed)
     {
         critical_exit(state);
         return ERR_STATE;
     }
 
-    q->destroyed = 1;
-    trt_wait_q_wake_all_result_locked(&q->readers, TASK_WAIT_DESTROYED);
-    trt_wait_q_wake_all_result_locked(&q->writers, TASK_WAIT_DESTROYED);
+    mq->destroyed = 1;
+    trt_wait_q_wake_all_result_locked(&mq->readers, TASK_WAIT_DESTROYED);
+    trt_wait_q_wake_all_result_locked(&mq->writers, TASK_WAIT_DESTROYED);
     critical_exit(state);
 
-    free(q->buf);
-    free(q);
+    free(mq->buf);
+    free(mq);
     return ERR_OK;
 }
 
-err_t trt_msg_q_send(trt_msg_q_t *q, void *data, size_t size, trt_time_t timeout)
+err_t trt_msg_q_send(trt_msg_q_t *mq, void *data, size_t size, trt_time_t timeout)
 {
     int result;
     critical_state_t state;
 
-    if (q == 0 || data == 0 || size == 0 || size > q->cap)
+    if (mq == 0 || data == 0 || size == 0 || size > mq->cap)
     {
         return ERR_INVAL;
     }
@@ -170,19 +170,19 @@ err_t trt_msg_q_send(trt_msg_q_t *q, void *data, size_t size, trt_time_t timeout
 
         state = critical_enter();
 
-        if (q->destroyed)
+        if (mq->destroyed)
         {
             critical_exit(state);
             return ERR_DESTROYED;
         }
 
-        if (!trt_msg_q_is_full(q))
+        if (!trt_msg_q_is_full(mq))
         {
-            slot = q->buf + (q->head * q->cap);
-            msg_q_zero(slot, q->cap);
+            slot = mq->buf + (mq->head * mq->cap);
+            msg_q_zero(slot, mq->cap);
             msg_q_copy(slot, data, size);
-            q->head = msg_q_next(q, q->head);
-            trt_wait_q_wake_one_locked(&q->readers);
+            mq->head = msg_q_next(mq, mq->head);
+            trt_wait_q_wake_one_locked(&mq->readers);
             critical_exit(state);
             return ERR_OK;
         }
@@ -201,8 +201,8 @@ err_t trt_msg_q_send(trt_msg_q_t *q, void *data, size_t size, trt_time_t timeout
         }
 
         result = timeout.us == TRT_TIME_FOREVER_US
-                     ? trt_wait_q_block_locked(&q->writers)
-                     : trt_wait_q_block_timeout_locked(&q->writers, timeout);
+                     ? trt_wait_q_block_locked(&mq->writers)
+                     : trt_wait_q_block_timeout_locked(&mq->writers, timeout);
         critical_exit(state);
 
         if (result != ERR_OK)
@@ -219,12 +219,12 @@ err_t trt_msg_q_send(trt_msg_q_t *q, void *data, size_t size, trt_time_t timeout
     }
 }
 
-err_t trt_msg_q_send_front(trt_msg_q_t *q, void *data, size_t size, trt_time_t timeout)
+err_t trt_msg_q_send_front(trt_msg_q_t *mq, void *data, size_t size, trt_time_t timeout)
 {
     int result;
     critical_state_t state;
 
-    if (q == 0 || data == 0 || size == 0 || size > q->cap)
+    if (mq == 0 || data == 0 || size == 0 || size > mq->cap)
     {
         return ERR_INVAL;
     }
@@ -235,19 +235,19 @@ err_t trt_msg_q_send_front(trt_msg_q_t *q, void *data, size_t size, trt_time_t t
 
         state = critical_enter();
 
-        if (q->destroyed)
+        if (mq->destroyed)
         {
             critical_exit(state);
             return ERR_DESTROYED;
         }
 
-        if (!trt_msg_q_is_full(q))
+        if (!trt_msg_q_is_full(mq))
         {
-            q->tail = q->tail == 0 ? q->qlen : q->tail - 1u;
-            slot = q->buf + (q->tail * q->cap);
-            msg_q_zero(slot, q->cap);
+            mq->tail = mq->tail == 0 ? mq->qlen : mq->tail - 1u;
+            slot = mq->buf + (mq->tail * mq->cap);
+            msg_q_zero(slot, mq->cap);
             msg_q_copy(slot, data, size);
-            trt_wait_q_wake_one_locked(&q->readers);
+            trt_wait_q_wake_one_locked(&mq->readers);
             critical_exit(state);
             return ERR_OK;
         }
@@ -266,8 +266,8 @@ err_t trt_msg_q_send_front(trt_msg_q_t *q, void *data, size_t size, trt_time_t t
         }
 
         result = timeout.us == TRT_TIME_FOREVER_US
-                     ? trt_wait_q_block_locked(&q->writers)
-                     : trt_wait_q_block_timeout_locked(&q->writers, timeout);
+                     ? trt_wait_q_block_locked(&mq->writers)
+                     : trt_wait_q_block_timeout_locked(&mq->writers, timeout);
         critical_exit(state);
 
         if (result != ERR_OK)
@@ -284,12 +284,12 @@ err_t trt_msg_q_send_front(trt_msg_q_t *q, void *data, size_t size, trt_time_t t
     }
 }
 
-err_t trt_msg_q_recv(trt_msg_q_t *q, void *buf, trt_time_t timeout)
+err_t trt_msg_q_recv(trt_msg_q_t *mq, void *buf, trt_time_t timeout)
 {
     int result;
     critical_state_t state;
 
-    if (q == 0 || buf == 0)
+    if (mq == 0 || buf == 0)
     {
         return ERR_INVAL;
     }
@@ -300,18 +300,18 @@ err_t trt_msg_q_recv(trt_msg_q_t *q, void *buf, trt_time_t timeout)
 
         state = critical_enter();
 
-        if (q->destroyed)
+        if (mq->destroyed)
         {
             critical_exit(state);
             return ERR_DESTROYED;
         }
 
-        if (!trt_msg_q_is_empty(q))
+        if (!trt_msg_q_is_empty(mq))
         {
-            slot = q->buf + (q->tail * q->cap);
-            msg_q_copy(buf, slot, q->cap);
-            q->tail = msg_q_next(q, q->tail);
-            trt_wait_q_wake_one_locked(&q->writers);
+            slot = mq->buf + (mq->tail * mq->cap);
+            msg_q_copy(buf, slot, mq->cap);
+            mq->tail = msg_q_next(mq, mq->tail);
+            trt_wait_q_wake_one_locked(&mq->writers);
             critical_exit(state);
             return ERR_OK;
         }
@@ -330,8 +330,8 @@ err_t trt_msg_q_recv(trt_msg_q_t *q, void *buf, trt_time_t timeout)
         }
 
         result = timeout.us == TRT_TIME_FOREVER_US
-                     ? trt_wait_q_block_locked(&q->readers)
-                     : trt_wait_q_block_timeout_locked(&q->readers, timeout);
+                     ? trt_wait_q_block_locked(&mq->readers)
+                     : trt_wait_q_block_timeout_locked(&mq->readers, timeout);
         critical_exit(state);
 
         if (result != ERR_OK)
@@ -348,12 +348,12 @@ err_t trt_msg_q_recv(trt_msg_q_t *q, void *buf, trt_time_t timeout)
     }
 }
 
-err_t trt_msg_q_peek(trt_msg_q_t *q, void *buf, trt_time_t timeout)
+err_t trt_msg_q_peek(trt_msg_q_t *mq, void *buf, trt_time_t timeout)
 {
     int result;
     critical_state_t state;
 
-    if (q == 0 || buf == 0)
+    if (mq == 0 || buf == 0)
     {
         return ERR_INVAL;
     }
@@ -364,17 +364,17 @@ err_t trt_msg_q_peek(trt_msg_q_t *q, void *buf, trt_time_t timeout)
 
         state = critical_enter();
 
-        if (q->destroyed)
+        if (mq->destroyed)
         {
             critical_exit(state);
             return ERR_DESTROYED;
         }
 
-        if (!trt_msg_q_is_empty(q))
+        if (!trt_msg_q_is_empty(mq))
         {
-            slot = q->buf + (q->tail * q->cap);
-            msg_q_copy(buf, slot, q->cap);
-            trt_wait_q_wake_one_locked(&q->readers);
+            slot = mq->buf + (mq->tail * mq->cap);
+            msg_q_copy(buf, slot, mq->cap);
+            trt_wait_q_wake_one_locked(&mq->readers);
             critical_exit(state);
             return ERR_OK;
         }
@@ -393,8 +393,8 @@ err_t trt_msg_q_peek(trt_msg_q_t *q, void *buf, trt_time_t timeout)
         }
 
         result = timeout.us == TRT_TIME_FOREVER_US
-                     ? trt_wait_q_block_locked(&q->readers)
-                     : trt_wait_q_block_timeout_locked(&q->readers, timeout);
+                     ? trt_wait_q_block_locked(&mq->readers)
+                     : trt_wait_q_block_timeout_locked(&mq->readers, timeout);
         critical_exit(state);
 
         if (result != ERR_OK)
@@ -411,7 +411,7 @@ err_t trt_msg_q_peek(trt_msg_q_t *q, void *buf, trt_time_t timeout)
     }
 }
 
-err_t trt_msg_q_send_from_isr(trt_msg_q_t *q, void *data, size_t size)
+err_t trt_msg_q_send_from_isr(trt_msg_q_t *mq, void *data, size_t size)
 {
     critical_state_t state;
     unsigned char *slot;
@@ -423,34 +423,34 @@ err_t trt_msg_q_send_from_isr(trt_msg_q_t *q, void *data, size_t size)
 
     state = critical_enter();
 
-    if (q == 0 || data == 0 || size == 0 || size > q->cap)
+    if (mq == 0 || data == 0 || size == 0 || size > mq->cap)
     {
         critical_exit(state);
         return ERR_INVAL;
     }
 
-    if (q->destroyed)
+    if (mq->destroyed)
     {
         critical_exit(state);
         return ERR_DESTROYED;
     }
 
-    if (trt_msg_q_is_full(q))
+    if (trt_msg_q_is_full(mq))
     {
         critical_exit(state);
         return ERR_BUSY;
     }
 
-    slot = q->buf + (q->head * q->cap);
-    msg_q_zero(slot, q->cap);
+    slot = mq->buf + (mq->head * mq->cap);
+    msg_q_zero(slot, mq->cap);
     msg_q_copy(slot, data, size);
-    q->head = msg_q_next(q, q->head);
-    trt_wait_q_wake_one_from_isr(&q->readers);
+    mq->head = msg_q_next(mq, mq->head);
+    trt_wait_q_wake_one_from_isr(&mq->readers);
     critical_exit(state);
     return ERR_OK;
 }
 
-err_t trt_msg_q_recv_from_isr(trt_msg_q_t *q, void *buf)
+err_t trt_msg_q_recv_from_isr(trt_msg_q_t *mq, void *buf)
 {
     critical_state_t state;
     unsigned char *slot;
@@ -462,33 +462,33 @@ err_t trt_msg_q_recv_from_isr(trt_msg_q_t *q, void *buf)
 
     state = critical_enter();
 
-    if (q == 0 || buf == 0)
+    if (mq == 0 || buf == 0)
     {
         critical_exit(state);
         return ERR_INVAL;
     }
 
-    if (q->destroyed)
+    if (mq->destroyed)
     {
         critical_exit(state);
         return ERR_DESTROYED;
     }
 
-    if (trt_msg_q_is_empty(q))
+    if (trt_msg_q_is_empty(mq))
     {
         critical_exit(state);
         return ERR_BUSY;
     }
 
-    slot = q->buf + (q->tail * q->cap);
-    msg_q_copy(buf, slot, q->cap);
-    q->tail = msg_q_next(q, q->tail);
-    trt_wait_q_wake_one_from_isr(&q->writers);
+    slot = mq->buf + (mq->tail * mq->cap);
+    msg_q_copy(buf, slot, mq->cap);
+    mq->tail = msg_q_next(mq, mq->tail);
+    trt_wait_q_wake_one_from_isr(&mq->writers);
     critical_exit(state);
     return ERR_OK;
 }
 
-err_t trt_msg_q_peek_from_isr(trt_msg_q_t *q, void *buf)
+err_t trt_msg_q_peek_from_isr(trt_msg_q_t *mq, void *buf)
 {
     critical_state_t state;
     unsigned char *slot;
@@ -500,27 +500,27 @@ err_t trt_msg_q_peek_from_isr(trt_msg_q_t *q, void *buf)
 
     state = critical_enter();
 
-    if (q == 0 || buf == 0)
+    if (mq == 0 || buf == 0)
     {
         critical_exit(state);
         return ERR_INVAL;
     }
 
-    if (q->destroyed)
+    if (mq->destroyed)
     {
         critical_exit(state);
         return ERR_DESTROYED;
     }
 
-    if (trt_msg_q_is_empty(q))
+    if (trt_msg_q_is_empty(mq))
     {
         critical_exit(state);
         return ERR_BUSY;
     }
 
-    slot = q->buf + (q->tail * q->cap);
-    msg_q_copy(buf, slot, q->cap);
-    trt_wait_q_wake_one_from_isr(&q->readers);
+    slot = mq->buf + (mq->tail * mq->cap);
+    msg_q_copy(buf, slot, mq->cap);
+    trt_wait_q_wake_one_from_isr(&mq->readers);
     critical_exit(state);
     return ERR_OK;
 }
