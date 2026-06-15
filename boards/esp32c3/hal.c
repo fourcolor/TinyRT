@@ -34,7 +34,7 @@ int arch_in_isr(void)
     return trap_nesting != 0;
 }
 
-void intr_register(int intc_id, struct intr_handler_t *handler)
+void intr_register(int intc_id, const struct intr_handler_t *handler)
 {
     intr_table[intc_id].fn = handler->fn;
     intr_table[intc_id].arg = handler->arg;
