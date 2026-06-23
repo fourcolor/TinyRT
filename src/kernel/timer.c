@@ -1,5 +1,5 @@
 #include "timer.h"
-#include "arch_port.h"
+#include "port.h"
 #include "critical.h"
 #include "hal.h"
 

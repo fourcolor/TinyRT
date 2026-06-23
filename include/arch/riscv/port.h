@@ -72,3 +72,20 @@ static inline void arch_interrupt_disable(void)
 {
     __asm__ volatile("csrci mstatus, 8" ::: "memory");
 }
+
+static inline uint32_t arch_critical_enter(void)
+{
+    uint32_t mstatus;
+
+    __asm__ volatile("csrr %0, mstatus\n"
+                     "csrci mstatus, 8"
+                     : "=r"(mstatus)
+                     :
+                     : "memory");
+    return mstatus;
+}
+
+static inline void arch_critical_exit(uint32_t mstatus)
+{
+    __asm__ volatile("csrw mstatus, %0" : : "r"(mstatus) : "memory");
+}

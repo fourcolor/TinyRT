@@ -1,5 +1,5 @@
 #include "sched.h"
-#include "arch_port.h"
+#include "port.h"
 #include "critical.h"
 #include "list.h"
 #include "logger.h"
