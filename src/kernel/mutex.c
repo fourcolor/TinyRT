@@ -1,6 +1,7 @@
 #include "mutex.h"
 #include "critical.h"
 #include "error.h"
+#include "hal.h"
 #include "malloc.h"
 #include "sched.h"
 #include "task.h"
@@ -59,7 +60,7 @@ trt_handle_t trt_mutex_create(void)
     return handle;
 }
 
-static err_t mutex_destroy_obj(trt_mutex_t *mutex)
+static err_t mutex_destroy_obj(trt_mutex_t *mutex, int *woken)
 {
     critical_state_t state;
 
@@ -78,7 +79,7 @@ static err_t mutex_destroy_obj(trt_mutex_t *mutex)
     mutex->destroyed = 1;
     mutex->owner = 0;
     mutex->lock_count = 0;
-    trt_wait_q_wake_all_result_locked(&mutex->waiters, TASK_WAIT_DESTROYED);
+    *woken = trt_wait_q_wake_all_result_locked(&mutex->waiters, TASK_WAIT_DESTROYED);
     critical_exit(state);
 
     return ERR_OK;
@@ -88,6 +89,12 @@ err_t trt_mutex_destroy(trt_handle_t handle)
 {
     trt_mutex_t *mutex;
     err_t result;
+    int woken = 0;
+
+    if (arch_in_isr())
+    {
+        return ERR_STATE;
+    }
 
     result = mutex_lookup(handle, TRT_RIGHT_DESTROY, &mutex);
     if (result != ERR_OK)
@@ -95,7 +102,7 @@ err_t trt_mutex_destroy(trt_handle_t handle)
         return result;
     }
 
-    result = mutex_destroy_obj(mutex);
+    result = mutex_destroy_obj(mutex, &woken);
     if (result != ERR_OK)
     {
         return result;
@@ -103,6 +110,10 @@ err_t trt_mutex_destroy(trt_handle_t handle)
 
     trt_handle_close(handle);
     free(mutex);
+    if (woken != 0)
+    {
+        task_yield();
+    }
     return ERR_OK;
 }
 

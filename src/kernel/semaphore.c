@@ -59,7 +59,7 @@ trt_handle_t trt_sem_create(int max, int cnt)
     return handle;
 }
 
-static err_t sem_destroy_obj(trt_sem_t *sem)
+static err_t sem_destroy_obj(trt_sem_t *sem, int *woken)
 {
     critical_state_t state;
 
@@ -77,7 +77,7 @@ static err_t sem_destroy_obj(trt_sem_t *sem)
 
     sem->destroyed = 1;
     sem->cnt = 0;
-    trt_wait_q_wake_all_result_locked(&sem->waiters, TASK_WAIT_DESTROYED);
+    *woken = trt_wait_q_wake_all_result_locked(&sem->waiters, TASK_WAIT_DESTROYED);
     critical_exit(state);
 
     return ERR_OK;
@@ -87,6 +87,12 @@ err_t trt_sem_destroy(trt_handle_t handle)
 {
     trt_sem_t *sem;
     err_t result;
+    int woken = 0;
+
+    if (arch_in_isr())
+    {
+        return ERR_STATE;
+    }
 
     result = sem_lookup(handle, TRT_RIGHT_DESTROY, &sem);
     if (result != ERR_OK)
@@ -94,7 +100,7 @@ err_t trt_sem_destroy(trt_handle_t handle)
         return result;
     }
 
-    result = sem_destroy_obj(sem);
+    result = sem_destroy_obj(sem, &woken);
     if (result != ERR_OK)
     {
         return result;
@@ -102,6 +108,10 @@ err_t trt_sem_destroy(trt_handle_t handle)
 
     trt_handle_close(handle);
     free(sem);
+    if (woken != 0)
+    {
+        task_yield();
+    }
     return ERR_OK;
 }
 

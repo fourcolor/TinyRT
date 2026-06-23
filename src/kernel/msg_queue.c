@@ -177,9 +177,11 @@ trt_handle_t trt_msg_q_create(size_t cap, size_t qlen)
     return handle;
 }
 
-static err_t msg_q_destroy_obj(trt_msg_q_t *mq)
+static err_t msg_q_destroy_obj(trt_msg_q_t *mq, int *woken)
 {
     critical_state_t state;
+    int reader_count;
+    int writer_count;
 
     if (mq == 0)
     {
@@ -194,12 +196,11 @@ static err_t msg_q_destroy_obj(trt_msg_q_t *mq)
     }
 
     mq->destroyed = 1;
-    trt_wait_q_wake_all_result_locked(&mq->readers, TASK_WAIT_DESTROYED);
-    trt_wait_q_wake_all_result_locked(&mq->writers, TASK_WAIT_DESTROYED);
+    reader_count = trt_wait_q_wake_all_result_locked(&mq->readers, TASK_WAIT_DESTROYED);
+    writer_count = trt_wait_q_wake_all_result_locked(&mq->writers, TASK_WAIT_DESTROYED);
+    *woken = reader_count + writer_count;
     critical_exit(state);
 
-    free(mq->buf);
-    free(mq);
     return ERR_OK;
 }
 
@@ -207,6 +208,12 @@ err_t trt_msg_q_destroy(trt_handle_t handle)
 {
     trt_msg_q_t *mq;
     err_t result;
+    int woken = 0;
+
+    if (arch_in_isr())
+    {
+        return ERR_STATE;
+    }
 
     result = msg_q_lookup(handle, TRT_RIGHT_DESTROY, &mq);
     if (result != ERR_OK)
@@ -214,13 +221,19 @@ err_t trt_msg_q_destroy(trt_handle_t handle)
         return result;
     }
 
-    result = msg_q_destroy_obj(mq);
+    result = msg_q_destroy_obj(mq, &woken);
     if (result != ERR_OK)
     {
         return result;
     }
 
     trt_handle_close(handle);
+    free(mq->buf);
+    free(mq);
+    if (woken != 0)
+    {
+        task_yield();
+    }
     return ERR_OK;
 }
 

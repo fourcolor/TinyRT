@@ -1,6 +1,7 @@
 #include "timer.h"
 #include "port.h"
 #include "critical.h"
+#include "error.h"
 #include "hal.h"
 #include "list.h"
 #include "malloc.h"
@@ -284,6 +285,11 @@ err_t trt_timer_destroy(trt_handle_t handle)
 {
     timer_t *timer;
     err_t result;
+
+    if (arch_in_isr())
+    {
+        return ERR_STATE;
+    }
 
     result = timer_lookup(handle, TRT_RIGHT_DESTROY, &timer);
     if (result != ERR_OK)
