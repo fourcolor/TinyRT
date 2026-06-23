@@ -25,7 +25,7 @@ static void kernel_init(void)
     arch_interrupt_disable();
     task_init();
 
-    idle = task_create("idle_task", idle_task, 0, RTOS_TASK_STACK_SIZE, 0);
+    idle = task_create_kernel("idle_task", idle_task, 0, RTOS_TASK_STACK_SIZE, 0);
     if (idle == 0)
     {
         LOG_ERROR("idle task create failed\n");

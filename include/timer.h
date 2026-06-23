@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include "error.h"
-#include "list.h"
+#include "handle.h"
 
 typedef void (*timer_callback_t)(void *);
 
@@ -17,16 +17,6 @@ typedef struct
 #define TRT_TIME_FOREVER_US UINT64_MAX
 #define TRT_WAIT_FOREVER TRT_US(TRT_TIME_FOREVER_US)
 
-typedef struct timer_t
-{
-    list_node_t node;
-    uint32_t deadline;
-    uint32_t period;
-    timer_callback_t callback;
-    void *arg;
-    int active;
-} timer_t;
-
 void timer_init(void);
 void timer_start_tick(void);
 uint32_t timer_ticks(void);
@@ -37,10 +27,10 @@ uint32_t timer_ms_to_ticks(uint64_t ms);
 uint32_t timer_sec_to_ticks(uint64_t sec);
 int timer_expired(uint32_t now, uint32_t deadline);
 
-void timer_setup(timer_t *timer, timer_callback_t callback, void *arg);
-void timer_start(timer_t *timer, trt_time_t delay, trt_time_t period);
-void timer_start_ticks(timer_t *timer, uint32_t delay_ticks, uint32_t period_ticks);
-void timer_stop(timer_t *timer);
-err_t timer_destroy(timer_t *timer);
-int timer_active(timer_t *timer);
+trt_handle_t trt_timer_create(timer_callback_t callback, void *arg);
+void trt_timer_start(trt_handle_t timer, trt_time_t delay, trt_time_t period);
+void trt_timer_start_ticks(trt_handle_t timer, uint32_t delay_ticks, uint32_t period_ticks);
+void trt_timer_stop(trt_handle_t timer);
+err_t trt_timer_destroy(trt_handle_t timer);
+int trt_timer_active(trt_handle_t timer);
 void timer_run_expired(void);

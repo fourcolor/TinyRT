@@ -1,11 +1,35 @@
 #include "mutex.h"
 #include "critical.h"
 #include "error.h"
+#include "malloc.h"
 #include "sched.h"
 #include "task.h"
 #include "wait_queue.h"
 
-void trt_mutex_init(trt_mutex_t *mutex)
+typedef struct
+{
+    task_t *owner;
+    uint32_t lock_count;
+    uint8_t destroyed;
+    trt_wait_q_t waiters;
+} trt_mutex_t;
+
+static err_t mutex_lookup(trt_handle_t handle, uint32_t rights, trt_mutex_t **out)
+{
+    void *object;
+    err_t result;
+
+    result = trt_handle_lookup(handle, TRT_OBJ_MUTEX, rights, &object);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    *out = object;
+    return ERR_OK;
+}
+
+static void mutex_init_obj(trt_mutex_t *mutex)
 {
     mutex->owner = 0;
     mutex->lock_count = 0;
@@ -13,7 +37,29 @@ void trt_mutex_init(trt_mutex_t *mutex)
     INIT_LIST_HEAD(&mutex->waiters.waiters);
 }
 
-err_t trt_mutex_destroy(trt_mutex_t *mutex)
+trt_handle_t trt_mutex_create(void)
+{
+    trt_mutex_t *mutex;
+    trt_handle_t handle;
+
+    mutex = malloc(sizeof(*mutex));
+    if (mutex == 0)
+    {
+        return TRT_HANDLE_INVALID;
+    }
+
+    mutex_init_obj(mutex);
+    if (trt_handle_alloc(mutex, TRT_OBJ_MUTEX, TRT_RIGHT_WAIT | TRT_RIGHT_POST | TRT_RIGHT_DESTROY,
+                         &handle) != ERR_OK)
+    {
+        free(mutex);
+        return TRT_HANDLE_INVALID;
+    }
+
+    return handle;
+}
+
+static err_t mutex_destroy_obj(trt_mutex_t *mutex)
 {
     critical_state_t state;
 
@@ -38,7 +84,29 @@ err_t trt_mutex_destroy(trt_mutex_t *mutex)
     return ERR_OK;
 }
 
-err_t trt_mutex_trylock(trt_mutex_t *mutex)
+err_t trt_mutex_destroy(trt_handle_t handle)
+{
+    trt_mutex_t *mutex;
+    err_t result;
+
+    result = mutex_lookup(handle, TRT_RIGHT_DESTROY, &mutex);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    result = mutex_destroy_obj(mutex);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    trt_handle_close(handle);
+    free(mutex);
+    return ERR_OK;
+}
+
+static err_t mutex_trylock_obj(trt_mutex_t *mutex)
 {
     task_t *current;
     critical_state_t state;
@@ -76,7 +144,21 @@ err_t trt_mutex_trylock(trt_mutex_t *mutex)
     return ERR_BUSY;
 }
 
-err_t trt_mutex_lock(trt_mutex_t *mutex)
+err_t trt_mutex_trylock(trt_handle_t handle)
+{
+    trt_mutex_t *mutex;
+    err_t result;
+
+    result = mutex_lookup(handle, TRT_RIGHT_WAIT, &mutex);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    return mutex_trylock_obj(mutex);
+}
+
+static err_t mutex_lock_obj(trt_mutex_t *mutex)
 {
     task_t *current;
     int result;
@@ -127,7 +209,21 @@ err_t trt_mutex_lock(trt_mutex_t *mutex)
     return mutex->owner == scheduler.current_task ? ERR_OK : ERR_STATE;
 }
 
-err_t trt_mutex_lock_timeout(trt_mutex_t *mutex, trt_time_t timeout)
+err_t trt_mutex_lock(trt_handle_t handle)
+{
+    trt_mutex_t *mutex;
+    err_t result;
+
+    result = mutex_lookup(handle, TRT_RIGHT_WAIT, &mutex);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    return mutex_lock_obj(mutex);
+}
+
+static err_t mutex_lock_timeout_obj(trt_mutex_t *mutex, trt_time_t timeout)
 {
     task_t *current;
     int result;
@@ -135,7 +231,7 @@ err_t trt_mutex_lock_timeout(trt_mutex_t *mutex, trt_time_t timeout)
 
     if (timeout.us == TRT_TIME_FOREVER_US)
     {
-        return trt_mutex_lock(mutex);
+        return mutex_lock_obj(mutex);
     }
 
     if (mutex == 0 || scheduler.current_task == 0)
@@ -186,7 +282,21 @@ err_t trt_mutex_lock_timeout(trt_mutex_t *mutex, trt_time_t timeout)
                : ERR_TIMEOUT;
 }
 
-err_t trt_mutex_unlock(trt_mutex_t *mutex)
+err_t trt_mutex_lock_timeout(trt_handle_t handle, trt_time_t timeout)
+{
+    trt_mutex_t *mutex;
+    err_t result;
+
+    result = mutex_lookup(handle, TRT_RIGHT_WAIT, &mutex);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    return mutex_lock_timeout_obj(mutex, timeout);
+}
+
+static err_t mutex_unlock_obj(trt_mutex_t *mutex)
 {
     task_t *next;
     critical_state_t state;
@@ -230,4 +340,18 @@ err_t trt_mutex_unlock(trt_mutex_t *mutex)
 
     critical_exit(state);
     return ERR_OK;
+}
+
+err_t trt_mutex_unlock(trt_handle_t handle)
+{
+    trt_mutex_t *mutex;
+    err_t result;
+
+    result = mutex_lookup(handle, TRT_RIGHT_POST, &mutex);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    return mutex_unlock_obj(mutex);
 }

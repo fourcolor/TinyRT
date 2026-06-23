@@ -39,8 +39,23 @@ static void task_exit_trap(void)
     task_exit();
 }
 
-task_t *task_create(const char *name, void (*entry)(void *), void *arg, size_t stack_size,
-                    uint8_t priority)
+static err_t task_lookup(trt_handle_t handle, uint32_t rights, task_t **out)
+{
+    void *object;
+    err_t result;
+
+    result = trt_handle_lookup(handle, TRT_OBJ_TASK, rights, &object);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    *out = object;
+    return ERR_OK;
+}
+
+task_t *task_create_kernel(const char *name, void (*entry)(void *), void *arg, size_t stack_size,
+                           uint8_t priority)
 {
     uint8_t *stack;
     task_t *task;
@@ -87,6 +102,7 @@ task_t *task_create(const char *name, void (*entry)(void *), void *arg, size_t s
     task->priority = priority;
     task->base_priority = priority;
     task->effective_priority = priority;
+    task->handle = TRT_HANDLE_INVALID;
     task->entry = entry;
     task->arg = arg;
     task->sp = arch_task_init_frame(stack, stack_size, entry, arg, task_exit_trap);
@@ -100,7 +116,29 @@ task_t *task_create(const char *name, void (*entry)(void *), void *arg, size_t s
     return task;
 }
 
-err_t task_delete(task_t *task)
+trt_handle_t task_create(const char *name, void (*entry)(void *), void *arg, size_t stack_size,
+                         uint8_t priority)
+{
+    task_t *task;
+    trt_handle_t handle;
+
+    task = task_create_kernel(name, entry, arg, stack_size, priority);
+    if (task == 0)
+    {
+        return TRT_HANDLE_INVALID;
+    }
+
+    if (trt_handle_alloc(task, TRT_OBJ_TASK, TRT_RIGHT_DESTROY, &handle) != ERR_OK)
+    {
+        task_delete_kernel(task);
+        return TRT_HANDLE_INVALID;
+    }
+
+    task->handle = handle;
+    return handle;
+}
+
+static err_t task_delete_obj(task_t *task)
 {
     int delete_self;
     critical_state_t state;
@@ -130,6 +168,12 @@ err_t task_delete(task_t *task)
         return ERR_LOCKED;
     }
 
+    if (task->handle != TRT_HANDLE_INVALID)
+    {
+        trt_handle_close(task->handle);
+        task->handle = TRT_HANDLE_INVALID;
+    }
+
     sched_mark_deleted(task);
     if (task_count != 0)
     {
@@ -154,9 +198,28 @@ err_t task_delete(task_t *task)
     return ERR_OK;
 }
 
+err_t task_delete_kernel(task_t *task)
+{
+    return task_delete_obj(task);
+}
+
+err_t task_delete(trt_handle_t handle)
+{
+    task_t *task;
+    err_t result;
+
+    result = task_lookup(handle, TRT_RIGHT_DESTROY, &task);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    return task_delete_obj(task);
+}
+
 void task_exit(void)
 {
-    task_delete(0);
+    task_delete_obj(0);
     for (;;)
     {
         arch_yield();

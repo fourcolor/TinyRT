@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "error.h"
+#include "handle.h"
 #include "list.h"
 #include "rtos_config.h"
 #include "timer.h"
@@ -37,6 +38,7 @@ typedef struct task_t
     uint32_t priority;
     uint32_t base_priority;
     uint32_t effective_priority;
+    trt_handle_t handle;
     void (*entry)(void *);
     void *arg;
     list_node_t master_list;
@@ -45,9 +47,12 @@ typedef struct task_t
 } task_t;
 
 void task_init(void);
-task_t *task_create(const char *name, void (*entry)(void *), void *arg, size_t stack_size,
-                    uint8_t priority);
-err_t task_delete(task_t *task);
+task_t *task_create_kernel(const char *name, void (*entry)(void *), void *arg, size_t stack_size,
+                           uint8_t priority);
+err_t task_delete_kernel(task_t *task);
+trt_handle_t task_create(const char *name, void (*entry)(void *), void *arg, size_t stack_size,
+                         uint8_t priority);
+err_t task_delete(trt_handle_t task);
 void task_exit(void) __attribute__((noreturn));
 void task_cleanup_deleted(void);
 void task_yield(void) __attribute__((noinline));

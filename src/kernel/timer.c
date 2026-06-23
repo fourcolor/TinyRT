@@ -2,6 +2,18 @@
 #include "port.h"
 #include "critical.h"
 #include "hal.h"
+#include "list.h"
+#include "malloc.h"
+
+typedef struct timer
+{
+    list_node_t node;
+    uint32_t deadline;
+    uint32_t period;
+    timer_callback_t callback;
+    void *arg;
+    int active;
+} timer_t;
 
 static list_head_t timer_list;
 static int timer_initialized;
@@ -103,7 +115,22 @@ int timer_expired(uint32_t now, uint32_t deadline)
     return (int32_t)(now - deadline) >= 0;
 }
 
-void timer_setup(timer_t *timer, timer_callback_t callback, void *arg)
+static err_t timer_lookup(trt_handle_t handle, uint32_t rights, timer_t **out)
+{
+    void *object;
+    err_t result;
+
+    result = trt_handle_lookup(handle, TRT_OBJ_TIMER, rights, &object);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    *out = object;
+    return ERR_OK;
+}
+
+static void timer_setup_obj(timer_t *timer, timer_callback_t callback, void *arg)
 {
     if (timer == 0)
     {
@@ -118,7 +145,34 @@ void timer_setup(timer_t *timer, timer_callback_t callback, void *arg)
     timer->active = 0;
 }
 
-void timer_start_ticks(timer_t *timer, uint32_t delay_ticks, uint32_t period_ticks)
+trt_handle_t trt_timer_create(timer_callback_t callback, void *arg)
+{
+    timer_t *timer;
+    trt_handle_t handle;
+
+    if (callback == 0)
+    {
+        return TRT_HANDLE_INVALID;
+    }
+
+    timer = malloc(sizeof(*timer));
+    if (timer == 0)
+    {
+        return TRT_HANDLE_INVALID;
+    }
+
+    timer_setup_obj(timer, callback, arg);
+    if (trt_handle_alloc(timer, TRT_OBJ_TIMER, TRT_RIGHT_READ | TRT_RIGHT_WRITE | TRT_RIGHT_DESTROY,
+                         &handle) != ERR_OK)
+    {
+        free(timer);
+        return TRT_HANDLE_INVALID;
+    }
+
+    return handle;
+}
+
+static void timer_start_ticks_obj(timer_t *timer, uint32_t delay_ticks, uint32_t period_ticks)
 {
     uint32_t state;
 
@@ -142,17 +196,29 @@ void timer_start_ticks(timer_t *timer, uint32_t delay_ticks, uint32_t period_tic
     critical_exit(state);
 }
 
-void timer_start(timer_t *timer, trt_time_t delay, trt_time_t period)
+void trt_timer_start_ticks(trt_handle_t handle, uint32_t delay_ticks, uint32_t period_ticks)
+{
+    timer_t *timer;
+
+    if (timer_lookup(handle, TRT_RIGHT_WRITE, &timer) != ERR_OK)
+    {
+        return;
+    }
+
+    timer_start_ticks_obj(timer, delay_ticks, period_ticks);
+}
+
+void trt_timer_start(trt_handle_t handle, trt_time_t delay, trt_time_t period)
 {
     if (delay.us == TRT_TIME_FOREVER_US || period.us == TRT_TIME_FOREVER_US)
     {
         return;
     }
 
-    timer_start_ticks(timer, timer_us_to_ticks(delay.us), timer_us_to_ticks(period.us));
+    trt_timer_start_ticks(handle, timer_us_to_ticks(delay.us), timer_us_to_ticks(period.us));
 }
 
-void timer_stop(timer_t *timer)
+static void timer_stop_obj(timer_t *timer)
 {
     uint32_t state;
 
@@ -172,7 +238,19 @@ void timer_stop(timer_t *timer)
     critical_exit(state);
 }
 
-err_t timer_destroy(timer_t *timer)
+void trt_timer_stop(trt_handle_t handle)
+{
+    timer_t *timer;
+
+    if (timer_lookup(handle, TRT_RIGHT_WRITE, &timer) != ERR_OK)
+    {
+        return;
+    }
+
+    timer_stop_obj(timer);
+}
+
+static err_t timer_destroy_obj(timer_t *timer)
 {
     uint32_t state;
 
@@ -202,9 +280,43 @@ err_t timer_destroy(timer_t *timer)
     return ERR_OK;
 }
 
-int timer_active(timer_t *timer)
+err_t trt_timer_destroy(trt_handle_t handle)
+{
+    timer_t *timer;
+    err_t result;
+
+    result = timer_lookup(handle, TRT_RIGHT_DESTROY, &timer);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    result = timer_destroy_obj(timer);
+    if (result != ERR_OK)
+    {
+        return result;
+    }
+
+    trt_handle_close(handle);
+    free(timer);
+    return ERR_OK;
+}
+
+static int timer_active_obj(timer_t *timer)
 {
     return timer != 0 && timer->active;
+}
+
+int trt_timer_active(trt_handle_t handle)
+{
+    timer_t *timer;
+
+    if (timer_lookup(handle, TRT_RIGHT_READ, &timer) != ERR_OK)
+    {
+        return 0;
+    }
+
+    return timer_active_obj(timer);
 }
 
 void timer_run_expired(void)
