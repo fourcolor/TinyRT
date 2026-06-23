@@ -53,21 +53,25 @@ MONITOR_SECONDS ?= 8
 APPDIR  := app
 APP     ?= main
 KERNELDIR := src/kernel
+TESTDIR := tests
 BUILDDIR := build/$(BOARD)
 
 # --- Target ---
 TARGET  := rtos
 
 # --- Sources ---
-APP_SRCS ?= $(APPDIR)/$(APP).c
+APP_SOURCE := $(firstword $(wildcard $(APPDIR)/$(APP).c) $(wildcard $(TESTDIR)/$(APP).c))
+APP_SRCS ?= $(APP_SOURCE)
 
 SRCS    := $(APP_SRCS) \
            $(wildcard $(KERNELDIR)/*.c) \
            $(wildcard $(BOARDDIR)/*.c)
 OBJS    := $(patsubst %.c,$(BUILDDIR)/%.o,$(SRCS))
 DEPS    := $(OBJS:.o=.d)
-FORMAT_SRCS := $(shell find app boards include src -type f \( -name '*.c' -o -name '*.h' -o -name '*.S' \))
-APP_TESTS ?= $(filter-out main,$(patsubst $(APPDIR)/%.c,%,$(wildcard $(APPDIR)/*_test.c)))
+FORMAT_SRCS := $(shell find app boards include src tests -type f \( -name '*.c' -o -name '*.h' -o -name '*.S' \))
+-include $(TESTDIR)/test_apps.mk
+APP_TEST_FILES ?= $(shell git ls-files '$(TESTDIR)/*_test.c')
+APP_TESTS ?= $(filter-out main,$(patsubst $(TESTDIR)/%.c,%,$(APP_TEST_FILES)))
 
 # --- Compiler flags ---
 ifeq ($(BOARD),qemu-stm32f103c8t8)
@@ -91,6 +95,7 @@ CFLAGS  := $(ARCH) \
             -Wextra \
             -I$(BOARDDIR)/include \
             -Iinclude \
+            -I$(TESTDIR) \
             $(ARCH_INCLUDES) \
             -MMD -MP
 
@@ -209,7 +214,8 @@ app-tests:
 	done
 
 list-apps:
-	@printf "%s\n" $(patsubst $(APPDIR)/%.c,%,$(wildcard $(APPDIR)/*.c))
+	@printf "%s\n" $(patsubst $(APPDIR)/%.c,%,$(wildcard $(APPDIR)/*.c)) \
+	    $(patsubst $(TESTDIR)/%.c,%,$(wildcard $(TESTDIR)/*.c))
 
 clean:
 	rm -rf build
