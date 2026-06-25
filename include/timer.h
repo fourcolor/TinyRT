@@ -17,8 +17,6 @@ typedef struct
 #define TRT_TIME_FOREVER_US UINT64_MAX
 #define TRT_WAIT_FOREVER TRT_US(TRT_TIME_FOREVER_US)
 
-void timer_init(void);
-void timer_start_tick(void);
 uint32_t timer_ticks(void);
 uint64_t timer_cycles(void);
 uint64_t timer_us(void);
@@ -29,8 +27,6 @@ int timer_expired(uint32_t now, uint32_t deadline);
 
 trt_handle_t trt_timer_create(timer_callback_t callback, void *arg);
 void trt_timer_start(trt_handle_t timer, trt_time_t delay, trt_time_t period);
-void trt_timer_start_ticks(trt_handle_t timer, uint32_t delay_ticks, uint32_t period_ticks);
 void trt_timer_stop(trt_handle_t timer);
 err_t trt_timer_destroy(trt_handle_t timer);
 int trt_timer_active(trt_handle_t timer);
-void timer_run_expired(void);

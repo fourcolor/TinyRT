@@ -2,9 +2,9 @@
 #include "intr.h"
 #include "csr.h"
 #include "systimer_reg.h"
-#include "sched.h"
+#include "sched_private.h"
 #include "logger.h"
-#include "timer.h"
+#include "timer_private.h"
 
 #define MSTATUS_MPIE 0x80u
 

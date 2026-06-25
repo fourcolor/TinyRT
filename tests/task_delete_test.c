@@ -19,7 +19,7 @@ static void self_delete_task(void *arg)
     (void)arg;
 
     LOG_INFO("self delete task start tick=%lu\n", timer_ticks());
-    task_delete(0);
+    task_exit();
     LOG_ERROR("self delete task returned\n");
 }
 

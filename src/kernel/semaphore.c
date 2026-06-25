@@ -3,8 +3,9 @@
 #include "malloc.h"
 #include "error.h"
 #include "hal.h"
-#include "sched.h"
-#include "task.h"
+#include "handle_private.h"
+#include "sched_private.h"
+#include "task_private.h"
 #include "wait_queue.h"
 
 typedef struct

@@ -1,9 +1,9 @@
 #include "kernel.h"
 #include "port.h"
 #include "logger.h"
-#include "task.h"
-#include "sched.h"
-#include "timer.h"
+#include "task_private.h"
+#include "sched_private.h"
+#include "timer_private.h"
 
 void __attribute__((weak)) app_main(void) {}
 

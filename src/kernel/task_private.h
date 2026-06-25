@@ -1,0 +1,56 @@
+#pragma once
+
+#include <stddef.h>
+#include <stdint.h>
+#include "error.h"
+#include "handle.h"
+#include "list.h"
+#include "rtos_config.h"
+#include "task.h"
+#include "timer.h"
+
+typedef enum
+{
+    TASK_UNUSED = 0,
+    TASK_READY,
+    TASK_RUNNING,
+    TASK_BLOCKED,
+    TASK_DELETED,
+} task_state_t;
+
+typedef enum
+{
+    TASK_WAIT_NONE = 0,
+    TASK_WAIT_OBJECT,
+    TASK_WAIT_TIMEOUT,
+    TASK_WAIT_DESTROYED,
+} task_wait_result_t;
+
+typedef struct task_t
+{
+    char name[20];
+    uint32_t *sp;
+    uint32_t *stack_base;
+    uint32_t stack_size;
+    uint32_t wakeup;
+    uint8_t waiting_on_timer;
+    task_wait_result_t wait_result;
+    task_state_t state;
+    uint32_t priority;
+    uint32_t base_priority;
+    uint32_t effective_priority;
+    trt_handle_t handle;
+    void (*entry)(void *);
+    void *arg;
+    list_node_t master_list;
+    list_node_t state_list;
+    list_node_t timeout_list;
+} task_t;
+
+void task_init(void);
+task_t *task_create_kernel(const char *name, void (*entry)(void *), void *arg, size_t stack_size,
+                           uint8_t priority);
+err_t task_delete_kernel(task_t *task);
+void task_cleanup_deleted(void);
+
+void task_start_first(uint32_t *sp) __attribute__((noreturn));

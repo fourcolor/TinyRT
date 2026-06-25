@@ -81,16 +81,16 @@ static void log_task2(void *arg)
 
 static void timer_task1(void *arg)
 {
-    static timer_t timer_a;
-    static timer_t timer_b;
+    static trt_handle_t timer_a;
+    static trt_handle_t timer_b;
 
     (void)arg;
     LOG_INFO("timer task1 start\n");
 
-    timer_setup(&timer_a, timer_count_callback, (void *)&timer_a_hits);
-    timer_setup(&timer_b, timer_count_callback, (void *)&timer_b_hits);
-    timer_start(&timer_a, TRT_MS(250), TRT_MS(250));
-    timer_start(&timer_b, TRT_MS(700), TRT_MS(700));
+    timer_a = trt_timer_create(timer_count_callback, (void *)&timer_a_hits);
+    timer_b = trt_timer_create(timer_count_callback, (void *)&timer_b_hits);
+    trt_timer_start(timer_a, TRT_MS(250), TRT_MS(250));
+    trt_timer_start(timer_b, TRT_MS(700), TRT_MS(700));
 
     for (;;)
     {
@@ -101,21 +101,21 @@ static void timer_task1(void *arg)
 
 static void timer_task2(void *arg)
 {
-    static timer_t timer_c;
-    static timer_t timer_d;
+    static trt_handle_t timer_c;
+    static trt_handle_t timer_d;
 
     (void)arg;
     LOG_INFO("timer task2 start\n");
 
-    timer_setup(&timer_c, timer_count_callback, (void *)&timer_c_hits);
-    timer_setup(&timer_d, timer_count_callback, (void *)&timer_d_hits);
-    timer_start(&timer_c, TRT_MS(333), TRT_MS(333));
-    timer_start(&timer_d, TRT_MS(1200), TRT_MS(1200));
+    timer_c = trt_timer_create(timer_count_callback, (void *)&timer_c_hits);
+    timer_d = trt_timer_create(timer_count_callback, (void *)&timer_d_hits);
+    trt_timer_start(timer_c, TRT_MS(333), TRT_MS(333));
+    trt_timer_start(timer_d, TRT_MS(1200), TRT_MS(1200));
 
     for (;;)
     {
         LOG_INFO("T2: tick=%lu c=%lu d=%lu active=%d/%d\n", timer_ticks(), timer_c_hits,
-                 timer_d_hits, timer_active(&timer_c), timer_active(&timer_d));
+                 timer_d_hits, trt_timer_active(timer_c), trt_timer_active(timer_d));
         task_sleep(TRT_MS(1000));
     }
 }

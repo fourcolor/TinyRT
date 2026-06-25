@@ -5,7 +5,7 @@
 #include "task.h"
 #include "timer.h"
 
-static trt_sem_t sem;
+static trt_handle_t sem;
 static volatile uint32_t posts;
 static volatile uint32_t wakes;
 
@@ -18,7 +18,7 @@ static void producer_task(void *arg)
     {
         task_sleep(TRT_MS(500));
         posts++;
-        trt_sem_post(&sem);
+        trt_sem_post(sem);
         LOG_INFO("sem smoke post=%lu wake=%lu tick=%lu\n", posts, wakes, timer_ticks());
     }
 }
@@ -30,7 +30,7 @@ static void consumer_task(void *arg)
 
     for (;;)
     {
-        err_t result = trt_sem_wait(&sem);
+        err_t result = trt_sem_wait(sem);
 
         if (result != ERR_OK)
         {
@@ -46,7 +46,7 @@ static void consumer_task(void *arg)
 
 void app_main(void)
 {
-    trt_sem_init(&sem, 1, 0);
+    sem = trt_sem_create(1, 0);
     task_create("sem_prod", producer_task, 0, RTOS_TASK_STACK_SIZE, 1);
     task_create("sem_cons", consumer_task, 0, RTOS_TASK_STACK_SIZE, 1);
 }

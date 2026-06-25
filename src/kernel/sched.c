@@ -1,4 +1,4 @@
-#include "sched.h"
+#include "sched_private.h"
 #include "port.h"
 #include "critical.h"
 #include "list.h"

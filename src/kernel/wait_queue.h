@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "error.h"
 #include "list.h"
-#include "task.h"
+#include "task_private.h"
 #include "timer.h"
 
 typedef struct

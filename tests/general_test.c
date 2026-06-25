@@ -14,10 +14,10 @@ typedef struct
     uint32_t tick;
 } general_msg_t;
 
-static trt_sem_t general_sem;
-static trt_mutex_t general_mutex;
-static trt_msg_q_t *general_q;
-static timer_t general_timer;
+static trt_handle_t general_sem;
+static trt_handle_t general_mutex;
+static trt_handle_t general_q;
+static trt_handle_t general_timer;
 
 static volatile uint32_t timer_events;
 static volatile uint32_t sem_posts;
@@ -31,7 +31,7 @@ static void general_timer_callback(void *arg)
 {
     (void)arg;
     timer_events++;
-    trt_sem_post_from_isr(&general_sem);
+    trt_sem_post_from_isr(general_sem);
 }
 
 static void sem_consumer_task(void *arg)
@@ -41,7 +41,7 @@ static void sem_consumer_task(void *arg)
 
     for (;;)
     {
-        err_t result = trt_sem_wait(&general_sem);
+        err_t result = trt_sem_wait(general_sem);
 
         if (result == ERR_OK)
         {
@@ -61,8 +61,8 @@ static void timer_task(void *arg)
     (void)arg;
     LOG_INFO("general timer task start\n");
 
-    timer_setup(&general_timer, general_timer_callback, 0);
-    timer_start(&general_timer, TRT_MS(250), TRT_MS(250));
+    general_timer = trt_timer_create(general_timer_callback, 0);
+    trt_timer_start(general_timer, TRT_MS(250), TRT_MS(250));
 
     for (;;)
     {
@@ -78,7 +78,7 @@ static void sem_producer_task(void *arg)
     for (;;)
     {
         task_sleep(TRT_MS(350));
-        if (trt_sem_post(&general_sem) == ERR_OK)
+        if (trt_sem_post(general_sem) == ERR_OK)
         {
             sem_posts++;
         }
@@ -97,13 +97,13 @@ static void mutex_task(void *arg)
 
     for (;;)
     {
-        err_t result = trt_mutex_lock(&general_mutex);
+        err_t result = trt_mutex_lock(general_mutex);
 
         if (result == ERR_OK)
         {
             mutex_entries++;
             task_sleep(TRT_MS(20));
-            trt_mutex_unlock(&general_mutex);
+            trt_mutex_unlock(general_mutex);
         }
         else
         {
@@ -200,13 +200,15 @@ static void monitor_task(void *arg)
 
 void app_main(void)
 {
-    trt_sem_init(&general_sem, 8, 0);
-    trt_mutex_init(&general_mutex);
+    general_sem = trt_sem_create(8, 0);
+    general_mutex = trt_mutex_create();
 
-    general_q = trt_msg_q_init(sizeof(general_msg_t), 8);
-    if (general_q == 0)
+    general_q = trt_msg_q_create(sizeof(general_msg_t), 8);
+    if (general_sem == TRT_HANDLE_INVALID || general_mutex == TRT_HANDLE_INVALID ||
+        general_q == TRT_HANDLE_INVALID)
     {
-        LOG_ERROR("general msg queue init failed\n");
+        LOG_ERROR("general object init failed sem=%lu mutex=%lu queue=%lu\n", general_sem,
+                  general_mutex, general_q);
         return;
     }
 

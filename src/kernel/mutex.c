@@ -2,9 +2,10 @@
 #include "critical.h"
 #include "error.h"
 #include "hal.h"
+#include "handle_private.h"
 #include "malloc.h"
-#include "sched.h"
-#include "task.h"
+#include "sched_private.h"
+#include "task_private.h"
 #include "wait_queue.h"
 
 typedef struct

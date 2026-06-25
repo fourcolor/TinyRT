@@ -4,7 +4,7 @@
 #include "task.h"
 #include "timer.h"
 
-static trt_sem_t priority_sem;
+static trt_handle_t priority_sem;
 static volatile uint32_t wake_order;
 
 static void high_waiter(void *arg)
@@ -12,7 +12,7 @@ static void high_waiter(void *arg)
     (void)arg;
 
     LOG_INFO("high waiter start\n");
-    trt_sem_wait(&priority_sem);
+    trt_sem_wait(priority_sem);
     LOG_INFO("high waiter woke order=%lu tick=%lu\n", ++wake_order, timer_ticks());
 
     for (;;)
@@ -26,7 +26,7 @@ static void low_waiter(void *arg)
     (void)arg;
 
     LOG_INFO("low waiter start\n");
-    trt_sem_wait(&priority_sem);
+    trt_sem_wait(priority_sem);
     LOG_INFO("low waiter woke order=%lu tick=%lu\n", ++wake_order, timer_ticks());
 
     for (;;)
@@ -41,11 +41,11 @@ static void poster(void *arg)
 
     LOG_INFO("priority poster start\n");
     task_sleep(TRT_MS(100));
-    trt_sem_post(&priority_sem);
+    trt_sem_post(priority_sem);
     LOG_INFO("priority post 1 tick=%lu\n", timer_ticks());
 
     task_sleep(TRT_MS(100));
-    trt_sem_post(&priority_sem);
+    trt_sem_post(priority_sem);
     LOG_INFO("priority post 2 tick=%lu\n", timer_ticks());
 
     for (;;)
@@ -56,7 +56,7 @@ static void poster(void *arg)
 
 void app_main(void)
 {
-    trt_sem_init(&priority_sem, 2, 0);
+    priority_sem = trt_sem_create(2, 0);
 
     task_create("high_waiter", high_waiter, 0, RTOS_TASK_STACK_SIZE, 3);
     task_create("low_waiter", low_waiter, 0, RTOS_TASK_STACK_SIZE, 2);

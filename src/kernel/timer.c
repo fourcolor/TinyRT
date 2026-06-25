@@ -1,8 +1,9 @@
-#include "timer.h"
+#include "timer_private.h"
 #include "port.h"
 #include "critical.h"
 #include "error.h"
 #include "hal.h"
+#include "handle_private.h"
 #include "list.h"
 #include "malloc.h"
 
@@ -197,7 +198,7 @@ static void timer_start_ticks_obj(timer_t *timer, uint32_t delay_ticks, uint32_t
     critical_exit(state);
 }
 
-void trt_timer_start_ticks(trt_handle_t handle, uint32_t delay_ticks, uint32_t period_ticks)
+static void timer_start_ticks(trt_handle_t handle, uint32_t delay_ticks, uint32_t period_ticks)
 {
     timer_t *timer;
 
@@ -216,7 +217,7 @@ void trt_timer_start(trt_handle_t handle, trt_time_t delay, trt_time_t period)
         return;
     }
 
-    trt_timer_start_ticks(handle, timer_us_to_ticks(delay.us), timer_us_to_ticks(period.us));
+    timer_start_ticks(handle, timer_us_to_ticks(delay.us), timer_us_to_ticks(period.us));
 }
 
 static void timer_stop_obj(timer_t *timer)

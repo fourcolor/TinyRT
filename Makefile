@@ -96,6 +96,7 @@ CFLAGS  := $(ARCH) \
             -I$(BOARDDIR)/include \
             -Iinclude \
             -I$(TESTDIR) \
+            -I$(KERNELDIR) \
             $(ARCH_INCLUDES) \
             -MMD -MP
 

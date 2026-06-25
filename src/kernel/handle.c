@@ -1,4 +1,4 @@
-#include "handle.h"
+#include "handle_private.h"
 #include "critical.h"
 
 #define HANDLE_INDEX_BITS 16u
@@ -76,15 +76,6 @@ static err_t handle_get_slot_locked(trt_handle_t handle, handle_slot_t **out)
 
     *out = slot;
     return ERR_OK;
-}
-
-void trt_handle_table_init(void)
-{
-    critical_state_t state;
-
-    state = critical_enter();
-    handle_table_init_locked();
-    critical_exit(state);
 }
 
 err_t trt_handle_alloc(void *object, trt_obj_type_t type, uint32_t rights, trt_handle_t *out)
@@ -185,37 +176,6 @@ err_t trt_handle_close(trt_handle_t handle)
     {
         slot->generation = 1;
     }
-
-    critical_exit(state);
-    return ERR_OK;
-}
-
-err_t trt_handle_info(trt_handle_t handle, trt_handle_info_t *out)
-{
-    handle_slot_t *slot;
-    critical_state_t state;
-    err_t result;
-
-    if (out == 0)
-    {
-        return ERR_INVAL;
-    }
-
-    state = critical_enter();
-    handle_table_init_locked();
-
-    result = handle_get_slot_locked(handle, &slot);
-    if (result != ERR_OK)
-    {
-        critical_exit(state);
-        return result;
-    }
-
-    out->object = slot->object;
-    out->type = slot->type;
-    out->rights = slot->rights;
-    out->generation = slot->generation;
-    out->used = slot->used;
 
     critical_exit(state);
     return ERR_OK;

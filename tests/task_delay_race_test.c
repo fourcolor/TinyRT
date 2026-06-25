@@ -14,7 +14,7 @@ static void delay_worker(void *arg)
     for (;;)
     {
         (*counter)++;
-        task_delay_ticks(1);
+        task_sleep(TRT_MS(1));
     }
 }
 

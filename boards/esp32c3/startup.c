@@ -30,9 +30,9 @@
 #include <stddef.h>
 #include "intr.h"
 #include "hal.h"
-#include "task.h"
+#include "task_private.h"
 #include "kernel.h"
-#include "sched.h"
+#include "sched_private.h"
 
 extern char __bss_start[], __BSS_END__[];
 extern char __tp_start[];

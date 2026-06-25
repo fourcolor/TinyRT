@@ -1,11 +1,12 @@
-#include "task.h"
+#include "task_private.h"
 #include <string.h>
 #include "hal.h"
+#include "handle_private.h"
 #include "port.h"
 #include "logger.h"
 #include "malloc.h"
 #include "rtos_config.h"
-#include "sched.h"
+#include "sched_private.h"
 #include "timer.h"
 
 static uint32_t task_count;
@@ -265,7 +266,7 @@ void __attribute__((noinline)) task_yield(void)
     arch_yield();
 }
 
-void task_delay_ticks(uint32_t ticks)
+static void task_delay_ticks(uint32_t ticks)
 {
     uint32_t wakeup;
     critical_state_t state;

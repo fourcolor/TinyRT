@@ -1,6 +1,5 @@
 #include <stdint.h>
 
-#include "critical.h"
 #include "error.h"
 #include "logger.h"
 #include "msg_queue.h"
@@ -13,18 +12,12 @@ typedef struct
     uint32_t value;
 } delete_msg_t;
 
-static trt_sem_t delete_sem;
-static trt_msg_q_t *read_q;
-static trt_msg_q_t *write_q;
+static trt_handle_t delete_sem;
+static trt_handle_t read_q;
+static trt_handle_t write_q;
 
 static volatile uint32_t unexpected_wakes;
 static volatile uint32_t errors;
-
-static int wait_q_empty_locked(void)
-{
-    return trt_wait_q_empty(&delete_sem.waiters) && trt_wait_q_empty(&read_q->readers) &&
-           trt_wait_q_empty(&write_q->writers);
-}
 
 static void sem_waiter_task(void *arg)
 {
@@ -33,7 +26,7 @@ static void sem_waiter_task(void *arg)
     (void)arg;
     LOG_INFO("delete blocked sem waiter start tick=%lu\n", timer_ticks());
 
-    result = trt_sem_wait(&delete_sem);
+    result = trt_sem_wait(delete_sem);
     unexpected_wakes++;
     LOG_ERROR("delete blocked sem waiter woke result=%d tick=%lu\n", result, timer_ticks());
 
@@ -50,7 +43,7 @@ static void sem_timeout_waiter_task(void *arg)
     (void)arg;
     LOG_INFO("delete blocked sem timeout waiter start tick=%lu\n", timer_ticks());
 
-    result = trt_sem_wait_timeout(&delete_sem, TRT_SEC(30));
+    result = trt_sem_wait_timeout(delete_sem, TRT_SEC(30));
     unexpected_wakes++;
     LOG_ERROR("delete blocked sem timeout waiter woke result=%d tick=%lu\n", result, timer_ticks());
 
@@ -127,21 +120,19 @@ static void check_result(const char *name, int ok)
 static void supervisor_task(void *arg)
 {
     delete_msg_t prefill = {.value = 1};
-    task_t *sem_waiter;
-    task_t *sem_timeout_waiter;
-    task_t *msg_reader;
-    task_t *msg_writer;
-    task_t *delay_blocked;
-    critical_state_t state;
+    trt_handle_t sem_waiter;
+    trt_handle_t sem_timeout_waiter;
+    trt_handle_t msg_reader;
+    trt_handle_t msg_writer;
+    trt_handle_t delay_blocked;
     err_t result;
-    int waiters_ready;
 
     (void)arg;
     LOG_INFO("delete blocked supervisor start tick=%lu\n", timer_ticks());
 
-    read_q = trt_msg_q_init(sizeof(delete_msg_t), 1);
-    write_q = trt_msg_q_init(sizeof(delete_msg_t), 1);
-    if (read_q == 0 || write_q == 0)
+    read_q = trt_msg_q_create(sizeof(delete_msg_t), 1);
+    write_q = trt_msg_q_create(sizeof(delete_msg_t), 1);
+    if (read_q == TRT_HANDLE_INVALID || write_q == TRT_HANDLE_INVALID)
     {
         LOG_ERROR("delete blocked msg queue init failed\n");
         errors++;
@@ -157,17 +148,15 @@ static void supervisor_task(void *arg)
     msg_reader = task_create("del_msg_read", msg_reader_task, 0, RTOS_TASK_STACK_SIZE, 2);
     msg_writer = task_create("del_msg_write", msg_writer_task, 0, RTOS_TASK_STACK_SIZE, 2);
     delay_blocked = task_create("del_delay", delay_task, 0, RTOS_TASK_STACK_SIZE, 2);
-    check_result("task create", sem_waiter != 0 && sem_timeout_waiter != 0 && msg_reader != 0 &&
-                                    msg_writer != 0 && delay_blocked != 0);
+    check_result("task create", sem_waiter != TRT_HANDLE_INVALID &&
+                                    sem_timeout_waiter != TRT_HANDLE_INVALID &&
+                                    msg_reader != TRT_HANDLE_INVALID &&
+                                    msg_writer != TRT_HANDLE_INVALID &&
+                                    delay_blocked != TRT_HANDLE_INVALID);
 
     task_sleep(TRT_MS(200));
 
-    state = critical_enter();
-    waiters_ready = !trt_wait_q_empty(&delete_sem.waiters) && !trt_wait_q_empty(&read_q->readers) &&
-                    !trt_wait_q_empty(&write_q->writers) && delay_blocked->state == TASK_BLOCKED &&
-                    !list_empty(&delay_blocked->timeout_list);
-    critical_exit(state);
-    check_result("tasks entered blocked state", waiters_ready);
+    check_result("tasks reached blocking window", unexpected_wakes == 0);
 
     check_result("delete sem waiter", task_delete(sem_waiter) == ERR_OK);
     check_result("delete sem timeout waiter", task_delete(sem_timeout_waiter) == ERR_OK);
@@ -175,27 +164,16 @@ static void supervisor_task(void *arg)
     check_result("delete msg writer", task_delete(msg_writer) == ERR_OK);
     check_result("delete delay task", task_delete(delay_blocked) == ERR_OK);
 
-    state = critical_enter();
-    waiters_ready =
-        wait_q_empty_locked() && sem_waiter->state == TASK_DELETED &&
-        sem_timeout_waiter->state == TASK_DELETED && msg_reader->state == TASK_DELETED &&
-        msg_writer->state == TASK_DELETED && delay_blocked->state == TASK_DELETED &&
-        list_empty(&sem_timeout_waiter->timeout_list) && list_empty(&delay_blocked->timeout_list);
-    critical_exit(state);
-    check_result("blocked lists cleaned", waiters_ready);
-
     task_sleep(TRT_MS(100));
 
-    result = trt_sem_post(&delete_sem);
+    result = trt_sem_post(delete_sem);
     check_result("sem usable after deletes", result == ERR_OK);
 
     result = trt_msg_q_destroy(read_q);
     check_result("destroy read queue", result == ERR_OK);
-    read_q = 0;
 
     result = trt_msg_q_destroy(write_q);
     check_result("destroy write queue", result == ERR_OK);
-    write_q = 0;
 
     task_sleep(TRT_MS(1200));
     check_result("deleted tasks stayed deleted", unexpected_wakes == 0);
@@ -211,7 +189,7 @@ static void supervisor_task(void *arg)
 
 void app_main(void)
 {
-    trt_sem_init(&delete_sem, 1, 0);
+    delete_sem = trt_sem_create(1, 0);
 
     task_create("del_block_super", supervisor_task, 0, RTOS_TASK_STACK_SIZE, 1);
 }

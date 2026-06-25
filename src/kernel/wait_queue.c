@@ -2,8 +2,8 @@
 #include "critical.h"
 #include "error.h"
 #include "hal.h"
-#include "sched.h"
-#include "task.h"
+#include "sched_private.h"
+#include "task_private.h"
 #include "timer.h"
 
 void trt_wait_q_init(trt_wait_q_t *wq)

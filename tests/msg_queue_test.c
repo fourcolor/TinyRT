@@ -18,11 +18,11 @@ typedef struct
     uint32_t tick;
 } test_msg_t;
 
-static trt_msg_q_t *task_q;
-static trt_msg_q_t *isr_producer_q;
-static trt_msg_q_t *isr_consumer_q;
-static timer_t isr_producer_timer;
-static timer_t isr_consumer_timer;
+static trt_handle_t task_q;
+static trt_handle_t isr_producer_q;
+static trt_handle_t isr_consumer_q;
+static trt_handle_t isr_producer_timer;
+static trt_handle_t isr_consumer_timer;
 
 static volatile uint32_t task_sent;
 static volatile uint32_t task_received;
@@ -193,10 +193,10 @@ static void isr_supervisor(void *arg)
 
     (void)arg;
 
-    timer_setup(&isr_producer_timer, isr_producer_cb, 0);
-    timer_setup(&isr_consumer_timer, isr_consumer_cb, 0);
-    timer_start(&isr_producer_timer, TRT_MS(50), TRT_MS(50));
-    timer_start(&isr_consumer_timer, TRT_MS(70), TRT_MS(70));
+    isr_producer_timer = trt_timer_create(isr_producer_cb, 0);
+    isr_consumer_timer = trt_timer_create(isr_consumer_cb, 0);
+    trt_timer_start(isr_producer_timer, TRT_MS(50), TRT_MS(50));
+    trt_timer_start(isr_consumer_timer, TRT_MS(70), TRT_MS(70));
 
     for (;;)
     {
@@ -259,21 +259,22 @@ void app_main(void)
 {
     err_t result;
     test_msg_t msg;
-    trt_msg_q_t *destroy_q;
+    trt_handle_t destroy_q;
 
     LOG_INFO("MSG_Q cyclic test start tick=%lu\n", timer_ticks());
 
-    destroy_q = trt_msg_q_init(sizeof(test_msg_t), 1);
-    result = destroy_q == 0 ? ERR_NO_MEM : trt_msg_q_destroy(destroy_q);
+    destroy_q = trt_msg_q_create(sizeof(test_msg_t), 1);
+    result = destroy_q == TRT_HANDLE_INVALID ? ERR_NO_MEM : trt_msg_q_destroy(destroy_q);
     log_result("destroy", result == ERR_OK, result);
 
-    task_q = trt_msg_q_init(sizeof(test_msg_t), 3);
-    isr_producer_q = trt_msg_q_init(sizeof(test_msg_t), 4);
-    isr_consumer_q = trt_msg_q_init(sizeof(test_msg_t), 3);
+    task_q = trt_msg_q_create(sizeof(test_msg_t), 3);
+    isr_producer_q = trt_msg_q_create(sizeof(test_msg_t), 4);
+    isr_consumer_q = trt_msg_q_create(sizeof(test_msg_t), 3);
 
-    if (task_q == 0 || isr_producer_q == 0 || isr_consumer_q == 0)
+    if (task_q == TRT_HANDLE_INVALID || isr_producer_q == TRT_HANDLE_INVALID ||
+        isr_consumer_q == TRT_HANDLE_INVALID)
     {
-        LOG_INFO("MSG_Q init fail task_q=%p isr_prod=%p isr_cons=%p\n", task_q, isr_producer_q,
+        LOG_INFO("MSG_Q init fail task_q=%lu isr_prod=%lu isr_cons=%lu\n", task_q, isr_producer_q,
                  isr_consumer_q);
         return;
     }
