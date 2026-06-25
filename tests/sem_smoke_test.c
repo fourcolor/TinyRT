@@ -11,7 +11,7 @@ static volatile uint32_t wakes;
 
 static void producer_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("sem smoke producer start\n");
 
     for (;;)
@@ -25,7 +25,7 @@ static void producer_task(void *arg)
 
 static void consumer_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("sem smoke consumer start\n");
 
     for (;;)

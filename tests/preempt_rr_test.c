@@ -9,7 +9,7 @@ static volatile uint32_t rr_b_count;
 
 static void rr_busy_a(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     LOG_INFO("rr busy A start\n");
     for (;;)
@@ -20,7 +20,7 @@ static void rr_busy_a(void *arg)
 
 static void rr_busy_b(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     LOG_INFO("rr busy B start\n");
     for (;;)
@@ -34,7 +34,7 @@ static void rr_monitor(void *arg)
     uint32_t prev_a = 0;
     uint32_t prev_b = 0;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("rr monitor start preempt=%d round_robin=%d slice=%d\n", RTOS_SCHED_PREEMPTIVE,
              RTOS_SCHED_ROUND_ROBIN, RTOS_TIME_SLICE_TICKS);
 

@@ -29,14 +29,14 @@ static volatile uint32_t errors;
 
 static void general_timer_callback(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     timer_events++;
     trt_sem_post_from_isr(general_sem);
 }
 
 static void sem_consumer_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("general sem consumer start\n");
 
     for (;;)
@@ -58,7 +58,7 @@ static void sem_consumer_task(void *arg)
 
 static void timer_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("general timer task start\n");
 
     general_timer = trt_timer_create(general_timer_callback, 0);
@@ -72,7 +72,7 @@ static void timer_task(void *arg)
 
 static void sem_producer_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("general sem producer start\n");
 
     for (;;)
@@ -119,7 +119,7 @@ static void msg_producer_task(void *arg)
 {
     uint32_t seq = 0;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("general msg producer start\n");
 
     for (;;)
@@ -149,7 +149,7 @@ static void msg_consumer_task(void *arg)
 {
     uint32_t expected = 0;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("general msg consumer start\n");
 
     for (;;)
@@ -185,7 +185,7 @@ static void msg_consumer_task(void *arg)
 
 static void monitor_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("general monitor start\n");
 
     for (;;)

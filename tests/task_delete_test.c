@@ -9,14 +9,14 @@ static size_t free_before;
 
 static void return_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     LOG_INFO("return task start tick=%lu\n", timer_ticks());
 }
 
 static void self_delete_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     LOG_INFO("self delete task start tick=%lu\n", timer_ticks());
     task_exit();
@@ -28,7 +28,7 @@ static void supervisor_task(void *arg)
     size_t free_after_create;
     size_t free_after_cleanup;
 
-    (void)arg;
+    UNUSED(arg);
 
     free_before = heap_free_size();
     task_create("return_task", return_task, 0, RTOS_TASK_STACK_SIZE, 2);

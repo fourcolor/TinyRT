@@ -1,5 +1,7 @@
 #pragma once
 
+#define UNUSED(x) ((void)(x))
+
 #define RTOS_TASK_MAX 20
 #define RTOS_TASK_STACK_SIZE 2048
 #define RTOS_PRIORITY_MIN 0

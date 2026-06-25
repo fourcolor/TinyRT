@@ -290,7 +290,7 @@ int cpu_alloc_interrupt(uint8_t prio /* 1..15 */)
 
 static void SysTick_Handler(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     /* Clear target 0 interrupt flag (WTC), then read-back to flush APB write */
     SYSTIMER->INT_CLR = 7U;

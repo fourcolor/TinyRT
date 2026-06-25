@@ -9,7 +9,7 @@ static volatile uint32_t wake_order;
 
 static void high_waiter(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     LOG_INFO("high waiter start\n");
     trt_sem_wait(priority_sem);
@@ -23,7 +23,7 @@ static void high_waiter(void *arg)
 
 static void low_waiter(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     LOG_INFO("low waiter start\n");
     trt_sem_wait(priority_sem);
@@ -37,7 +37,7 @@ static void low_waiter(void *arg)
 
 static void poster(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     LOG_INFO("priority poster start\n");
     task_sleep(TRT_MS(100));

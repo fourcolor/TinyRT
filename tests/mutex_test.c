@@ -12,7 +12,7 @@ static trt_handle_t mutex_recursive;
 
 static void mutex_holder_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("mutex holder start\n");
 
     if (trt_mutex_lock(mutex_test) == ERR_OK)
@@ -34,7 +34,7 @@ static void mutex_timeout_waiter_task(void *arg)
     uint32_t start;
     int result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("mutex timeout waiter start\n");
 
     task_sleep(TRT_MS(20));
@@ -54,7 +54,7 @@ static void mutex_success_waiter_task(void *arg)
     uint32_t start;
     int result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("mutex success waiter start\n");
 
     task_sleep(TRT_MS(40));
@@ -80,7 +80,7 @@ static void mutex_misc_task(void *arg)
     int first;
     int second;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("mutex misc start\n");
 
     task_sleep(TRT_MS(10));

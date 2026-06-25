@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "reg.h"
 #include "board.h"
+#include "rtos_config.h"
 
 #define BIT(x) ((uint32_t)(1U << (x)))
 

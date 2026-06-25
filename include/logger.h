@@ -1,6 +1,7 @@
 #pragma once
 
 #include "critical.h"
+#include "rtos_config.h"
 
 #define LOG_LEVEL_DEBUG 0
 #define LOG_LEVEL_INFO 1

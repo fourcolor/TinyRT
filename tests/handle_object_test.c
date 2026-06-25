@@ -19,7 +19,7 @@ static volatile uint32_t timer_posts;
 
 static void timer_callback(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     if (trt_sem_post_from_isr(sem_handle) == ERR_OK)
     {
@@ -31,7 +31,7 @@ static void producer_task(void *arg)
 {
     uint32_t seq = 0;
 
-    (void)arg;
+    UNUSED(arg);
     for (;;)
     {
         handle_msg_t msg = {
@@ -50,7 +50,7 @@ static void consumer_task(void *arg)
 {
     handle_msg_t msg;
 
-    (void)arg;
+    UNUSED(arg);
     for (;;)
     {
         if (trt_msg_q_recv(queue_handle, &msg, TRT_SEC(1)) == ERR_OK)
@@ -62,7 +62,7 @@ static void consumer_task(void *arg)
 
 static void sem_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     for (;;)
     {
         if (trt_sem_wait_timeout(sem_handle, TRT_SEC(2)) == ERR_OK)

@@ -9,6 +9,7 @@ void __attribute__((weak)) app_main(void) {}
 
 static void idle_task(void *arg)
 {
+    UNUSED(arg);
 
     for (;;)
     {

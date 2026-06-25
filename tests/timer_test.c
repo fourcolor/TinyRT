@@ -22,7 +22,7 @@ static void led_task(void *arg)
 {
     static int started;
 
-    (void)arg;
+    UNUSED(arg);
     gpio_write(BOARD_LED_PIN, 1);
     if (!started)
     {
@@ -43,7 +43,7 @@ static void log_task1(void *arg)
 {
     static int started;
 
-    (void)arg;
+    UNUSED(arg);
     if (!started)
     {
         started = 1;
@@ -63,7 +63,7 @@ static void log_task2(void *arg)
 {
     static int started;
 
-    (void)arg;
+    UNUSED(arg);
     if (!started)
     {
         started = 1;
@@ -84,7 +84,7 @@ static void timer_task1(void *arg)
     static trt_handle_t timer_a;
     static trt_handle_t timer_b;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("timer task1 start\n");
 
     timer_a = trt_timer_create(timer_count_callback, (void *)&timer_a_hits);
@@ -104,7 +104,7 @@ static void timer_task2(void *arg)
     static trt_handle_t timer_c;
     static trt_handle_t timer_d;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("timer task2 start\n");
 
     timer_c = trt_timer_create(timer_count_callback, (void *)&timer_c_hits);

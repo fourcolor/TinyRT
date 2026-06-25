@@ -31,7 +31,7 @@ static volatile uint32_t timer_hits;
 
 static void destroy_timer_callback(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     timer_hits++;
 }
 
@@ -39,7 +39,7 @@ static void sem_waiter_task(void *arg)
 {
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     result = trt_sem_wait(sem_destroy_test);
     test_check_result("sem waiter woke destroyed", result == ERR_DESTROYED, result);
     sem_waiter_done = 1;
@@ -54,7 +54,7 @@ static void sem_timeout_waiter_task(void *arg)
 {
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     result = trt_sem_wait_timeout(sem_destroy_test, TRT_SEC(10));
     test_check_result("sem timeout waiter woke destroyed", result == ERR_DESTROYED, result);
     sem_timeout_waiter_done = 1;
@@ -69,7 +69,7 @@ static void sem_destroyer_task(void *arg)
 {
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     task_sleep(TRT_MS(200));
 
     result = trt_sem_destroy(sem_destroy_test);
@@ -87,7 +87,7 @@ static void mutex_holder_task(void *arg)
 {
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     result = trt_mutex_lock(mutex_destroy_test);
     test_check_result("mutex holder lock", result == ERR_OK, result);
 
@@ -106,7 +106,7 @@ static void mutex_waiter_task(void *arg)
 {
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     task_sleep(TRT_MS(50));
 
     result = trt_mutex_lock(mutex_destroy_test);
@@ -123,7 +123,7 @@ static void mutex_destroyer_task(void *arg)
 {
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     task_sleep(TRT_MS(250));
 
     result = trt_mutex_destroy(mutex_destroy_test);
@@ -142,7 +142,7 @@ static void msg_reader_task(void *arg)
     destroy_msg_t msg;
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     result = trt_msg_q_recv(msg_read_q, &msg, TRT_WAIT_FOREVER);
     test_check_result("msg reader woke destroyed", result == ERR_DESTROYED, result);
     msg_reader_done = 1;
@@ -158,7 +158,7 @@ static void msg_writer_task(void *arg)
     destroy_msg_t msg = {.value = 2};
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     result = trt_msg_q_send(msg_write_q, &msg, sizeof(msg), TRT_WAIT_FOREVER);
     test_check_result("msg writer woke destroyed", result == ERR_DESTROYED, result);
     msg_writer_done = 1;
@@ -174,7 +174,7 @@ static void msg_destroyer_task(void *arg)
     destroy_msg_t msg = {.value = 3};
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     task_sleep(TRT_MS(300));
 
     result = trt_msg_q_destroy(msg_read_q);
@@ -197,7 +197,7 @@ static void timer_destroyer_task(void *arg)
 {
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     timer_destroy_test = trt_timer_create(destroy_timer_callback, 0);
     trt_timer_start(timer_destroy_test, TRT_MS(500), TRT_US(0));
     task_sleep(TRT_MS(100));
@@ -217,7 +217,7 @@ static void timer_destroyer_task(void *arg)
 
 static void summary_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     task_sleep(TRT_MS(1000));
     test_check("sem waiters completed", sem_waiter_done && sem_timeout_waiter_done);

@@ -192,7 +192,7 @@ __attribute__((naked, aligned(4))) void _isr(void)
 
 __attribute__((naked, noreturn)) void task_start_first(uint32_t *frame_sp)
 {
-    (void)frame_sp;
+    UNUSED(frame_sp);
 
     asm volatile(
         /* Start the first task through the same mret restore contract used by

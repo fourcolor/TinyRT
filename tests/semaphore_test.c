@@ -16,7 +16,7 @@ static volatile uint32_t sem_wakes;
 
 static void sem_producer_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("sem producer start\n");
 
     for (;;)
@@ -30,7 +30,7 @@ static void sem_producer_task(void *arg)
 
 static void sem_consumer_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("sem consumer start\n");
 
     for (;;)
@@ -52,7 +52,7 @@ static void sem_lock_test_task(void *arg)
     int result;
     int timeout_result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("sem lock test start\n");
 
     sched_lock();
@@ -74,7 +74,7 @@ static void sem_timeout_task(void *arg)
     uint32_t start;
     int result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("sem timeout task start\n");
 
     start = timer_ticks();
@@ -93,7 +93,7 @@ static void sem_timeout_signal_waiter_task(void *arg)
     uint32_t start;
     int result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("sem timeout signal waiter start\n");
 
     start = timer_ticks();
@@ -109,7 +109,7 @@ static void sem_timeout_signal_waiter_task(void *arg)
 
 static void sem_timeout_signal_poster_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("sem timeout signal poster start\n");
 
     task_sleep(TRT_MS(300));

@@ -6,7 +6,7 @@
 
 static void led_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     LOG_INFO("main demo start\n");
 

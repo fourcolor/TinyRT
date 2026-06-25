@@ -51,7 +51,7 @@ static void isr_producer_cb(void *arg)
     test_msg_t msg;
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
 
     msg.source = MSG_SRC_ISR_PRODUCER;
     msg.seq = seq;
@@ -80,7 +80,7 @@ static void isr_consumer_cb(void *arg)
     test_msg_t received;
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
 
     result = trt_msg_q_peek_from_isr(isr_consumer_q, &peeked);
     if (result == ERR_BUSY)
@@ -119,7 +119,7 @@ static void task_producer(void *arg)
 {
     uint32_t seq = 0;
 
-    (void)arg;
+    UNUSED(arg);
 
     for (;;)
     {
@@ -151,7 +151,7 @@ static void task_consumer(void *arg)
 {
     uint32_t expected_seq = 0;
 
-    (void)arg;
+    UNUSED(arg);
 
     for (;;)
     {
@@ -191,7 +191,7 @@ static void isr_supervisor(void *arg)
     uint32_t feed_seq = 0;
     uint64_t last_log_us = 0;
 
-    (void)arg;
+    UNUSED(arg);
 
     isr_producer_timer = trt_timer_create(isr_producer_cb, 0);
     isr_consumer_timer = trt_timer_create(isr_consumer_cb, 0);

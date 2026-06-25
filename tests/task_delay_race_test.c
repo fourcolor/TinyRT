@@ -24,7 +24,7 @@ static void monitor_task(void *arg)
     uint32_t last_b = 0;
     uint32_t last_c = 0;
 
-    (void)arg;
+    UNUSED(arg);
 
     for (;;)
     {

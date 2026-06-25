@@ -23,7 +23,7 @@ static void sem_waiter_task(void *arg)
 {
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("delete blocked sem waiter start tick=%lu\n", timer_ticks());
 
     result = trt_sem_wait(delete_sem);
@@ -40,7 +40,7 @@ static void sem_timeout_waiter_task(void *arg)
 {
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("delete blocked sem timeout waiter start tick=%lu\n", timer_ticks());
 
     result = trt_sem_wait_timeout(delete_sem, TRT_SEC(30));
@@ -58,7 +58,7 @@ static void msg_reader_task(void *arg)
     delete_msg_t msg;
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("delete blocked msg reader start tick=%lu\n", timer_ticks());
 
     result = trt_msg_q_recv(read_q, &msg, TRT_WAIT_FOREVER);
@@ -76,7 +76,7 @@ static void msg_writer_task(void *arg)
     delete_msg_t msg = {.value = 2};
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("delete blocked msg writer start tick=%lu\n", timer_ticks());
 
     result = trt_msg_q_send(write_q, &msg, sizeof(msg), TRT_WAIT_FOREVER);
@@ -91,7 +91,7 @@ static void msg_writer_task(void *arg)
 
 static void delay_task(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("delete blocked delay task start tick=%lu\n", timer_ticks());
 
     task_sleep(TRT_SEC(30));
@@ -127,7 +127,7 @@ static void supervisor_task(void *arg)
     trt_handle_t delay_blocked;
     err_t result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("delete blocked supervisor start tick=%lu\n", timer_ticks());
 
     read_q = trt_msg_q_create(sizeof(delete_msg_t), 1);

@@ -12,7 +12,7 @@ static volatile uint32_t sem_isr_wakes;
 
 static void sem_isr_callback(void *arg)
 {
-    (void)arg;
+    UNUSED(arg);
 
     if (trt_sem_post_from_isr(sem_isr_signal) == ERR_OK)
     {
@@ -25,7 +25,7 @@ static void sem_isr_waiter_task(void *arg)
     static trt_handle_t sem_isr_timer;
     err_t task_context_result;
 
-    (void)arg;
+    UNUSED(arg);
     LOG_INFO("sem isr waiter start\n");
 
     task_context_result = trt_sem_post_from_isr(sem_isr_signal);
